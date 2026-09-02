@@ -16,7 +16,6 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
-  const [dailyGoal, setDailyGoal] = useState("8000");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -28,7 +27,7 @@ export default function LoginPage() {
     try {
       const endpoint = isRegister ? "/api/auth/register" : "/api/auth/login";
       const payload = isRegister
-        ? { name, email, password, dailyGoal: parseInt(dailyGoal) || 8000 }
+        ? { name, email, password }
         : { email, password };
 
       const res = await fetch(endpoint, {
@@ -117,39 +116,22 @@ export default function LoginPage() {
 
           <form onSubmit={handleManualSubmit} className="space-y-4">
             {isRegister && (
-              <>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
-                    Full Name
-                  </label>
-                  <div className="relative">
-                    <User className="w-4 h-4 text-slate-500 absolute left-3.5 top-3" />
-                    <input
-                      type="text"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      placeholder="e.g. Alex Pratama"
-                      required
-                      className="w-full bg-slate-900/90 border border-slate-700/80 rounded-xl pl-10 pr-3.5 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-red-500"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
-                    Daily Step Goal
-                  </label>
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  Full Name
+                </label>
+                <div className="relative">
+                  <User className="w-4 h-4 text-slate-500 absolute left-3.5 top-3" />
                   <input
-                    type="number"
-                    step="500"
-                    min="1000"
-                    value={dailyGoal}
-                    onChange={(e) => setDailyGoal(e.target.value)}
-                    placeholder="8000"
-                    className="w-full bg-slate-900/90 border border-slate-700/80 rounded-xl px-3 py-2.5 text-sm text-slate-100 focus:outline-none focus:ring-1 focus:ring-red-500"
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="e.g. Alex Pratama"
+                    required
+                    className="w-full bg-slate-900/90 border border-slate-700/80 rounded-xl pl-10 pr-3.5 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-red-500"
                   />
                 </div>
-              </>
+              </div>
             )}
 
             <div>
