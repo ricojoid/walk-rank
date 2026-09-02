@@ -5,6 +5,7 @@ import {
   X,
   UserPlus,
   User,
+  AtSign,
   Mail,
   Lock,
   Target,
@@ -25,6 +26,7 @@ export default function CreateUserModal({
   onUserCreated,
 }: CreateUserModalProps) {
   const [name, setName] = useState("");
+  const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<"USER" | "SUPER_ADMIN">("USER");
@@ -48,6 +50,7 @@ export default function CreateUserModal({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: name.trim(),
+          username: username.trim(),
           email: email.trim().toLowerCase(),
           password,
           role,
@@ -138,6 +141,24 @@ export default function CreateUserModal({
                 onChange={(e) => setName(e.target.value)}
                 placeholder="e.g. Raditya Pratama"
                 className="w-full bg-slate-900 border border-slate-700 rounded-xl pl-10 pr-3.5 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-red-500"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+              Username <span className="text-slate-500 font-normal">(optional, auto-generated from email)</span>
+            </label>
+            <div className="relative">
+              <AtSign className="w-4 h-4 text-slate-500 absolute left-3.5 top-3" />
+              <input
+                type="text"
+                value={username}
+                onChange={(e) =>
+                  setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9._-]/g, ""))
+                }
+                placeholder="e.g. raditya.pratama"
+                className="w-full bg-slate-900 border border-slate-700 rounded-xl pl-10 pr-3.5 py-2.5 text-sm text-slate-100 font-mono placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-red-500"
               />
             </div>
           </div>

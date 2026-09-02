@@ -17,6 +17,7 @@ async function main() {
   const admin = await prisma.user.create({
     data: {
       name: "Super Admin FID",
+      username: "admin",
       email: "admin@walkrank.com",
       password: hashedAdminPassword,
       role: Role.SUPER_ADMIN,
@@ -30,6 +31,7 @@ async function main() {
   const usersData = [
     {
       name: "Budi Santoso",
+      username: "budi",
       email: "budi@walkrank.com",
       department: "Engineering",
       dailyGoal: 8000,
@@ -37,6 +39,7 @@ async function main() {
     },
     {
       name: "Siti Rahma",
+      username: "siti",
       email: "siti@walkrank.com",
       department: "Quality Control",
       dailyGoal: 8000,
@@ -44,6 +47,7 @@ async function main() {
     },
     {
       name: "Andi Wijaya",
+      username: "andi",
       email: "andi@walkrank.com",
       department: "Assembly Line",
       dailyGoal: 8000,
@@ -51,6 +55,7 @@ async function main() {
     },
     {
       name: "Dewi Lestari",
+      username: "dewi",
       email: "dewi@walkrank.com",
       department: "Logistics",
       dailyGoal: 8000,
@@ -58,6 +63,7 @@ async function main() {
     },
     {
       name: "Fajar Pratama",
+      username: "fajar",
       email: "fajar@walkrank.com",
       department: "Maintenance",
       dailyGoal: 8000,
@@ -65,6 +71,7 @@ async function main() {
     },
     {
       name: "Rina Kusuma",
+      username: "rina",
       email: "rina@walkrank.com",
       department: "HR & GA",
       dailyGoal: 8000,
@@ -77,6 +84,7 @@ async function main() {
     const user = await prisma.user.create({
       data: {
         name: u.name,
+        username: u.username,
         email: u.email,
         password: hashedUserPassword,
         role: Role.USER,

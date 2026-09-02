@@ -18,6 +18,7 @@ import {
   Target,
   ArrowUpRight,
   Filter,
+  UserCog,
 } from "lucide-react";
 import {
   AreaChart,
@@ -30,6 +31,7 @@ import {
 } from "recharts";
 import StepLogModal from "@/components/StepLogModal";
 import MaximizedLeaderboardModal from "@/components/MaximizedLeaderboardModal";
+import ProfileEditModal from "@/components/ProfileEditModal";
 import confetti from "canvas-confetti";
 import { Maximize2 } from "lucide-react";
 
@@ -37,6 +39,7 @@ interface UserDashboardClientProps {
   initialUser: {
     id: string;
     name: string;
+    username?: string | null;
     email: string;
     role: "USER" | "SUPER_ADMIN";
     department?: string | null;
@@ -50,6 +53,7 @@ export default function UserDashboardClient({ initialUser }: UserDashboardClient
   const [loading, setLoading] = useState(true);
   const [chartRange, setChartRange] = useState<"7d" | "30d">("7d");
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [editLog, setEditLog] = useState<any>(null);
   const [todayInputSteps, setTodayInputSteps] = useState<number>(0);
   const [todayInputNote, setTodayInputNote] = useState<string>("");
@@ -223,13 +227,21 @@ export default function UserDashboardClient({ initialUser }: UserDashboardClient
           </p>
         </div>
 
-        <div className="flex items-center gap-3 z-10">
+        <div className="flex flex-wrap items-center gap-2.5 z-10">
+          <button
+            onClick={() => setIsProfileModalOpen(true)}
+            className="px-3.5 py-2.5 text-xs sm:text-sm font-bold rounded-xl bg-slate-800/90 hover:bg-slate-700 text-slate-200 border border-slate-700 flex items-center gap-1.5 transition-all cursor-pointer shadow-sm hover:scale-[1.02] active:scale-95"
+          >
+            <UserCog className="w-4 h-4 text-slate-400" />
+            <span>Edit Profile</span>
+          </button>
+
           <button
             onClick={handleOpenNew}
-            className="px-4 py-2.5 text-xs sm:text-sm font-bold rounded-xl bg-slate-800/90 hover:bg-slate-700 text-slate-200 border border-slate-700 flex items-center gap-2 transition-all cursor-pointer shadow-sm hover:scale-[1.02] active:scale-95"
+            className="px-3.5 py-2.5 text-xs sm:text-sm font-bold rounded-xl bg-slate-800/90 hover:bg-slate-700 text-slate-200 border border-slate-700 flex items-center gap-1.5 transition-all cursor-pointer shadow-sm hover:scale-[1.02] active:scale-95"
           >
             <Calendar className="w-4 h-4 text-slate-400" />
-            Log Previous Day
+            <span>Log Previous Day</span>
           </button>
         </div>
       </div>
@@ -820,6 +832,13 @@ export default function UserDashboardClient({ initialUser }: UserDashboardClient
         onClose={() => setIsLeaderboardMaximized(false)}
         currentUserId={initialUser.id}
         initialPeriod="today"
+      />
+
+      {/* Profile Edit Modal */}
+      <ProfileEditModal
+        isOpen={isProfileModalOpen}
+        onClose={() => setIsProfileModalOpen(false)}
+        user={initialUser}
       />
     </div>
   );

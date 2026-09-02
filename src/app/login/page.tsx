@@ -15,12 +15,15 @@ import {
   Sparkles,
   ShieldCheck,
   ArrowRight,
+  AtSign,
 } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
   const [isRegister, setIsRegister] = useState(false);
+  const [loginIdentifier, setLoginIdentifier] = useState("");
   const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
@@ -34,8 +37,8 @@ export default function LoginPage() {
     try {
       const endpoint = isRegister ? "/api/auth/register" : "/api/auth/login";
       const payload = isRegister
-        ? { name, email, password }
-        : { email, password };
+        ? { name, username, email, password }
+        : { identifier: loginIdentifier, password };
 
       const res = await fetch(endpoint, {
         method: "POST",
@@ -187,41 +190,86 @@ export default function LoginPage() {
           )}
 
           <form onSubmit={handleManualSubmit} className="space-y-4">
-            {isRegister && (
+            {isRegister ? (
+              <>
+                {/* 1. Full Name */}
+                <div className="animate-in fade-in duration-150">
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    Full Name
+                  </label>
+                  <div className="relative">
+                    <User className="w-4 h-4 text-slate-500 absolute left-3.5 top-3" />
+                    <input
+                      type="text"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      placeholder="e.g. Alex Pratama"
+                      required
+                      className="w-full bg-slate-900/90 border border-slate-700/80 rounded-xl pl-10 pr-3.5 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-red-500 transition-all"
+                    />
+                  </div>
+                </div>
+
+                {/* 2. Username */}
+                <div className="animate-in fade-in duration-150">
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    Username
+                  </label>
+                  <div className="relative">
+                    <AtSign className="w-4 h-4 text-slate-500 absolute left-3.5 top-3" />
+                    <input
+                      type="text"
+                      value={username}
+                      onChange={(e) =>
+                        setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9._-]/g, ""))
+                      }
+                      placeholder="e.g. alex.pratama"
+                      required
+                      className="w-full bg-slate-900/90 border border-slate-700/80 rounded-xl pl-10 pr-3.5 py-2.5 text-sm text-slate-100 font-mono placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-red-500 transition-all"
+                    />
+                  </div>
+                  <p className="text-[10px] text-slate-500 mt-1">
+                    Used for signing in and on the leaderboard
+                  </p>
+                </div>
+
+                {/* 3. Email Address */}
+                <div className="animate-in fade-in duration-150">
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    Email Address
+                  </label>
+                  <div className="relative">
+                    <Mail className="w-4 h-4 text-slate-500 absolute left-3.5 top-3" />
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="name@walkrank.com"
+                      required
+                      className="w-full bg-slate-900/90 border border-slate-700/80 rounded-xl pl-10 pr-3.5 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-red-500 transition-all"
+                    />
+                  </div>
+                </div>
+              </>
+            ) : (
+              /* Sign In: Username or Email */
               <div className="animate-in fade-in duration-150">
                 <label className="block text-xs font-semibold text-slate-300 mb-1">
-                  Full Name
+                  Username or Email Address
                 </label>
                 <div className="relative">
                   <User className="w-4 h-4 text-slate-500 absolute left-3.5 top-3" />
                   <input
                     type="text"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="e.g. Alex Pratama"
+                    value={loginIdentifier}
+                    onChange={(e) => setLoginIdentifier(e.target.value)}
+                    placeholder="username or name@walkrank.com"
                     required
                     className="w-full bg-slate-900/90 border border-slate-700/80 rounded-xl pl-10 pr-3.5 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-red-500 transition-all"
                   />
                 </div>
               </div>
             )}
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">
-                Email Address
-              </label>
-              <div className="relative">
-                <Mail className="w-4 h-4 text-slate-500 absolute left-3.5 top-3" />
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="name@walkrank.com"
-                  required
-                  className="w-full bg-slate-900/90 border border-slate-700/80 rounded-xl pl-10 pr-3.5 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-red-500 transition-all"
-                />
-              </div>
-            </div>
 
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1">

@@ -4,22 +4,29 @@ import { comparePassword, signToken, getAuthCookieName } from "@/lib/auth";
 
 export async function POST(req: Request) {
   try {
-    const { email, password } = await req.json();
+    const { identifier, email, password } = await req.json();
 
-    if (!email || !password) {
+    const loginIdentifier = (identifier || email || "").toLowerCase().trim();
+
+    if (!loginIdentifier || !password) {
       return NextResponse.json(
-        { error: "Email dan password wajib diisi." },
+        { error: "Username/Email and password are required." },
         { status: 400 }
       );
     }
 
-    const user = await prisma.user.findUnique({
-      where: { email: email.toLowerCase().trim() },
+    const user = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { email: loginIdentifier },
+          { username: loginIdentifier },
+        ],
+      },
     });
 
     if (!user) {
       return NextResponse.json(
-        { error: "Email atau password salah." },
+        { error: "Invalid username/email or password." },
         { status: 401 }
       );
     }
@@ -27,7 +34,7 @@ export async function POST(req: Request) {
     const isMatch = await comparePassword(password, user.password);
     if (!isMatch) {
       return NextResponse.json(
-        { error: "Email atau password salah." },
+        { error: "Invalid username/email or password." },
         { status: 401 }
       );
     }
@@ -35,6 +42,7 @@ export async function POST(req: Request) {
     const sessionUser = {
       id: user.id,
       name: user.name,
+      username: user.username,
       email: user.email,
       role: user.role,
       department: user.department,

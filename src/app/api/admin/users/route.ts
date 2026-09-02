@@ -14,6 +14,7 @@ export async function GET() {
       select: {
         id: true,
         name: true,
+        username: true,
         email: true,
         role: true,
         department: true,
@@ -41,7 +42,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { name, email, password, role, dailyGoal } = await req.json();
+    const { name, username, email, password, role, dailyGoal } = await req.json();
 
     if (!name || !email || !password) {
       return NextResponse.json(
@@ -51,13 +52,29 @@ export async function POST(req: Request) {
     }
 
     const cleanEmail = email.toLowerCase().trim();
-    const existing = await prisma.user.findUnique({
-      where: { email: cleanEmail },
+    const cleanUsername = (username || email.split("@")[0])
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9._-]/g, "");
+
+    const existing = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { email: cleanEmail },
+          { username: cleanUsername },
+        ],
+      },
     });
 
     if (existing) {
+      if (existing.email === cleanEmail) {
+        return NextResponse.json(
+          { error: "An employee with this email already exists." },
+          { status: 400 }
+        );
+      }
       return NextResponse.json(
-        { error: "An employee with this email already exists." },
+        { error: "This username is already taken. Please choose another." },
         { status: 400 }
       );
     }
@@ -69,6 +86,7 @@ export async function POST(req: Request) {
     const newUser = await prisma.user.create({
       data: {
         name: name.trim(),
+        username: cleanUsername,
         email: cleanEmail,
         password: hashedPassword,
         role: assignedRole,
@@ -78,6 +96,7 @@ export async function POST(req: Request) {
       select: {
         id: true,
         name: true,
+        username: true,
         email: true,
         role: true,
         dailyGoal: true,
@@ -100,13 +119,34 @@ export async function PATCH(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { userId, role, dailyGoal, department } = await req.json();
+    const { userId, name, username, role, dailyGoal, department } = await req.json();
 
     if (!userId) {
       return NextResponse.json({ error: "userId is required" }, { status: 400 });
     }
 
     const updateData: any = {};
+    if (name && typeof name === "string") {
+      updateData.name = name.trim();
+    }
+    if (username && typeof username === "string") {
+      const cleanUsername = username.toLowerCase().trim().replace(/[^a-z0-9._-]/g, "");
+      if (cleanUsername.length >= 3) {
+        const existing = await prisma.user.findFirst({
+          where: {
+            username: cleanUsername,
+            NOT: { id: userId },
+          },
+        });
+        if (existing) {
+          return NextResponse.json(
+            { error: "Username is already taken by another employee." },
+            { status: 409 }
+          );
+        }
+        updateData.username = cleanUsername;
+      }
+    }
     if (role && (role === "USER" || role === "SUPER_ADMIN")) {
       updateData.role = role as Role;
     }

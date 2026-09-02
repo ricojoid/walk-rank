@@ -245,7 +245,8 @@ export default function AdminDashboardClient({ currentUser }: AdminDashboardClie
   const filteredUsersList = usersList.filter((u: any) => {
     const matchesSearch =
       u.name.toLowerCase().includes(userSearchTerm.toLowerCase()) ||
-      u.email.toLowerCase().includes(userSearchTerm.toLowerCase());
+      u.email.toLowerCase().includes(userSearchTerm.toLowerCase()) ||
+      (u.username && u.username.toLowerCase().includes(userSearchTerm.toLowerCase()));
     const matchesRole =
       userRoleFilter === "ALL" || u.role === userRoleFilter;
     return matchesSearch && matchesRole;
@@ -1043,7 +1044,12 @@ export default function AdminDashboardClient({ currentUser }: AdminDashboardClie
                                     </span>
                                   )}
                                 </div>
-                                <p className="text-[11px] text-slate-400 font-mono">{user.email}</p>
+                                <p className="text-[11px] text-slate-400 font-mono">
+                                  {user.username ? (
+                                    <span className="text-slate-300 font-semibold">@{user.username} • </span>
+                                  ) : null}
+                                  {user.email}
+                                </p>
                               </div>
                             </div>
                           </td>

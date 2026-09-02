@@ -10,6 +10,7 @@ const COOKIE_NAME = "walkrank_auth_token";
 export interface SessionUser {
   id: string;
   name: string;
+  username?: string | null;
   email: string;
   role: Role;
   department?: string | null;
@@ -30,6 +31,7 @@ export function signToken(user: SessionUser): string {
     {
       id: user.id,
       email: user.email,
+      username: user.username,
       name: user.name,
       role: user.role,
       department: user.department,
@@ -65,6 +67,7 @@ export async function getCurrentUser(): Promise<SessionUser | null> {
       select: {
         id: true,
         name: true,
+        username: true,
         email: true,
         role: true,
         department: true,
