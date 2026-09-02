@@ -190,11 +190,16 @@ export default function UserDashboardClient({ initialUser }: UserDashboardClient
 
   return (
     <div className="space-y-6">
-      {/* Top Banner & Greeting */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 sm:p-7 rounded-3xl bg-[#121826] border border-slate-800 relative overflow-hidden shadow-xl">
+      {/* Top Banner & Greeting with Ambient Glow */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 sm:p-7 rounded-3xl bg-[#121826] border border-slate-800 relative overflow-hidden shadow-xl group transition-all duration-300 hover:border-slate-700/80">
+        {/* Subtle Ambient Decorative Glows */}
+        <div className="absolute -top-12 -right-12 w-72 h-72 bg-red-600/10 rounded-full blur-3xl pointer-events-none animate-orb-1" />
+        <div className="absolute -bottom-12 -left-12 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl pointer-events-none animate-orb-2" />
+
         <div className="space-y-1.5 z-10">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700">
+            <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-slate-800/90 text-slate-300 border border-slate-700 flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
               {new Date().toLocaleDateString("en-US", {
                 weekday: "long",
                 month: "long",
@@ -202,7 +207,7 @@ export default function UserDashboardClient({ initialUser }: UserDashboardClient
                 year: "numeric",
               })}
             </span>
-            <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30 flex items-center gap-1.5">
+            <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30 flex items-center gap-1.5 shadow-sm shadow-amber-500/10 animate-float-slow">
               <Flame className="w-3.5 h-3.5 text-amber-400" />
               {stats.streak} Day Streak
             </span>
@@ -210,16 +215,18 @@ export default function UserDashboardClient({ initialUser }: UserDashboardClient
           <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
             Welcome back, {initialUser.name}
           </h1>
-          <p className="text-xs sm:text-sm text-slate-400">
-            Daily Target:{" "}
-            <span className="text-slate-200 font-bold">{goal.toLocaleString("en-US")} Steps</span>
+          <p className="text-xs sm:text-sm text-slate-400 flex items-center gap-1.5">
+            <span>Daily Target:</span>
+            <span className="text-slate-200 font-bold px-2 py-0.5 rounded-md bg-slate-800/80 border border-slate-700/60 font-mono">
+              {goal.toLocaleString("en-US")} Steps
+            </span>
           </p>
         </div>
 
         <div className="flex items-center gap-3 z-10">
           <button
             onClick={handleOpenNew}
-            className="px-4 py-2.5 text-xs sm:text-sm font-bold rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 flex items-center gap-2 transition-all cursor-pointer shadow-sm"
+            className="px-4 py-2.5 text-xs sm:text-sm font-bold rounded-xl bg-slate-800/90 hover:bg-slate-700 text-slate-200 border border-slate-700 flex items-center gap-2 transition-all cursor-pointer shadow-sm hover:scale-[1.02] active:scale-95"
           >
             <Calendar className="w-4 h-4 text-slate-400" />
             Log Previous Day

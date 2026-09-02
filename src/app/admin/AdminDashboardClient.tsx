@@ -268,11 +268,16 @@ export default function AdminDashboardClient({ currentUser }: AdminDashboardClie
 
   return (
     <div className="space-y-6 w-full">
-      {/* 1. Executive Top Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 sm:p-7 rounded-3xl bg-[#121826] border border-slate-800 shadow-xl relative overflow-hidden">
+      {/* 1. Executive Top Header with Ambient Glow */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 sm:p-7 rounded-3xl bg-[#121826] border border-slate-800 shadow-xl relative overflow-hidden group transition-all duration-300 hover:border-slate-700/80">
+        {/* Subtle Ambient Decorative Glows */}
+        <div className="absolute -top-12 -right-12 w-80 h-80 bg-red-600/10 rounded-full blur-3xl pointer-events-none animate-orb-1" />
+        <div className="absolute -bottom-12 -left-12 w-72 h-72 bg-rose-600/10 rounded-full blur-3xl pointer-events-none animate-orb-2" />
+
         <div className="space-y-1.5 z-10">
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-red-500/15 text-red-400 border border-red-500/30 flex items-center gap-1.5 uppercase tracking-wider">
+              <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-ping" />
               <ShieldCheck className="w-3.5 h-3.5 text-red-500" />
               FID Super Admin
             </span>
