@@ -15,7 +15,10 @@ services:
       POSTGRES_DEFAULT_DB: "POSTGRES_DB"
       WALKRANK_DB_NAME: "walkrank"
       JWT_SECRET: "walkrank_secure_jwt_secret_key_superadmin_and_users_2026"
+      COOKIE_SECURE: "false"
       NEXT_PUBLIC_APP_NAME: "WalkRank"
       PORT: 3000
       NODE_ENV: production
       SEED_DB: "true"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
