@@ -49,14 +49,12 @@ docker compose -f docker-compose.full-stack.yml up -d --build
 Port `3000` & `3001` di VPS sudah terpakai oleh aplikasi lain, sehingga WalkRank dialihkan ke port **`3005`** agar tidak tabrakan:
 - Buka browser: **`http://43.157.212.14:3005`**
 
-### Kredensial Demo:
-- **Super Admin**:
+### 👤 Autentikasi:
+- **Pendaftaran Akun Baru**: Klik tab **Register** di halaman login untuk membuat akun karyawan baru dengan nama, email, password, dan target langkah harian.
+- **Masuk**: Masukkan email dan password yang telah didaftarkan.
+- **Akun Super Admin Bawaan**:
   - Email: `admin@walkrank.com`
   - Password: `admin123`
-- **User Karyawan Demo**:
-  - Email: `budi@walkrank.com` | Password: `user123`
-  - Email: `siti@walkrank.com` | Password: `user123`
-  - Email: `andi@walkrank.com` | Password: `user123`
 
 ---
 

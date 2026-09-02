@@ -42,7 +42,7 @@ services:
       NEXT_PUBLIC_APP_NAME: "WalkRank"
       PORT: 3000
       NODE_ENV: production
-      SEED_DB: "true"
+      SEED_DB: "false"
     depends_on:
       postgres:
         condition: service_healthy
