@@ -1,6 +1,17 @@
 "use client";
 
-import { X, ExternalLink, Calendar, Footprints, User, Image as ImageIcon } from "lucide-react";
+import { useState } from "react";
+import {
+  X,
+  ExternalLink,
+  Calendar,
+  Footprints,
+  User,
+  Image as ImageIcon,
+  ZoomIn,
+  ZoomOut,
+  RotateCw,
+} from "lucide-react";
 
 interface EvidenceViewerModalProps {
   isOpen: boolean;
@@ -21,6 +32,9 @@ export default function EvidenceViewerModal({
   stepCount,
   note,
 }: EvidenceViewerModalProps) {
+  const [zoom, setZoom] = useState(1);
+  const [rotation, setRotation] = useState(0);
+
   if (!isOpen || !evidenceUrl) return null;
 
   const formattedDate = date
@@ -32,9 +46,17 @@ export default function EvidenceViewerModal({
       })
     : "Activity Date";
 
+  const handleZoomIn = () => setZoom((prev) => Math.min(prev + 0.3, 3));
+  const handleZoomOut = () => setZoom((prev) => Math.max(prev - 0.3, 0.7));
+  const handleRotate = () => setRotation((prev) => (prev + 90) % 360);
+  const handleReset = () => {
+    setZoom(1);
+    setRotation(0);
+  };
+
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-150"
+      className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-in fade-in duration-150"
       onClick={onClose}
     >
       <div
@@ -72,21 +94,55 @@ export default function EvidenceViewerModal({
             </div>
           </div>
 
-          <button
-            onClick={onClose}
-            className="p-2 text-slate-400 hover:text-white rounded-xl hover:bg-slate-800 transition-colors cursor-pointer"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            {/* Zoom Controls */}
+            <div className="hidden sm:flex items-center gap-1 bg-slate-800/80 p-1 rounded-xl border border-slate-700">
+              <button
+                type="button"
+                onClick={handleZoomIn}
+                className="p-1.5 text-slate-300 hover:text-white hover:bg-slate-700 rounded-lg transition-colors cursor-pointer"
+                title="Zoom In"
+              >
+                <ZoomIn className="w-3.5 h-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={handleZoomOut}
+                className="p-1.5 text-slate-300 hover:text-white hover:bg-slate-700 rounded-lg transition-colors cursor-pointer"
+                title="Zoom Out"
+              >
+                <ZoomOut className="w-3.5 h-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={handleRotate}
+                className="p-1.5 text-slate-300 hover:text-white hover:bg-slate-700 rounded-lg transition-colors cursor-pointer"
+                title="Rotate 90deg"
+              >
+                <RotateCw className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            <button
+              onClick={onClose}
+              className="p-2 text-slate-400 hover:text-white rounded-xl hover:bg-slate-800 transition-colors cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Image Preview Body */}
-        <div className="p-4 sm:p-6 overflow-y-auto flex-1 flex flex-col items-center justify-center bg-slate-950/60 min-h-[300px]">
-          <div className="relative max-h-[55vh] rounded-2xl overflow-hidden border border-slate-800 shadow-2xl bg-black/40 flex items-center justify-center group">
+        <div className="p-4 sm:p-6 overflow-hidden flex-1 flex flex-col items-center justify-center bg-slate-950/70 min-h-[320px] relative">
+          <div className="relative max-h-[55vh] w-full flex items-center justify-center overflow-hidden rounded-2xl">
             <img
               src={evidenceUrl}
               alt="Step Evidence"
-              className="max-h-[55vh] max-w-full object-contain rounded-xl"
+              style={{
+                transform: `scale(${zoom}) rotate(${rotation}deg)`,
+                transition: "transform 0.2s ease-in-out",
+              }}
+              className="max-h-[55vh] max-w-full object-contain rounded-xl shadow-2xl select-none"
             />
           </div>
 
@@ -100,19 +156,30 @@ export default function EvidenceViewerModal({
 
         {/* Footer */}
         <div className="p-4 border-t border-slate-800 bg-slate-900/80 flex items-center justify-between shrink-0">
-          <a
-            href={evidenceUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-xs text-slate-400 hover:text-red-400 flex items-center gap-1.5 transition-colors"
-          >
-            <ExternalLink className="w-3.5 h-3.5" />
-            <span>Open in Fullscreen Tab</span>
-          </a>
+          <div className="flex items-center gap-3">
+            <a
+              href={evidenceUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-slate-400 hover:text-red-400 flex items-center gap-1.5 transition-colors"
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+              <span>Open in Fullscreen Tab</span>
+            </a>
+            {(zoom !== 1 || rotation !== 0) && (
+              <button
+                type="button"
+                onClick={handleReset}
+                className="text-xs text-slate-400 hover:text-white underline cursor-pointer"
+              >
+                Reset Zoom
+              </button>
+            )}
+          </div>
 
           <button
             onClick={onClose}
-            className="px-4 py-2 text-xs font-bold rounded-xl bg-slate-800 hover:bg-slate-700 text-white transition-colors cursor-pointer"
+            className="px-5 py-2 text-xs font-bold rounded-xl bg-slate-800 hover:bg-slate-700 text-white transition-colors cursor-pointer"
           >
             Close
           </button>
