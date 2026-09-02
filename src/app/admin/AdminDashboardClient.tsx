@@ -13,6 +13,7 @@ import {
   CheckCircle2,
   UserCog,
   Maximize2,
+  Minimize2,
   Trophy,
   Medal,
   UserPlus,
@@ -599,8 +600,14 @@ export default function AdminDashboardClient({ currentUser }: AdminDashboardClie
           </div>
 
           {/* 6. Leaderboard & Rankings Section */}
-          <div className="p-6 sm:p-7 rounded-3xl bg-[#121826] border border-slate-800 shadow-xl space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div
+            className={
+              isLeaderboardMaximized
+                ? "fixed inset-0 z-50 p-6 sm:p-8 bg-[#0B0F17]/98 backdrop-blur-2xl overflow-y-auto flex flex-col space-y-6 animate-in fade-in zoom-in-95 duration-200"
+                : "p-6 sm:p-7 rounded-3xl bg-[#121826] border border-slate-800 shadow-xl space-y-6"
+            }
+          >
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-slate-800/80">
               <div>
                 <div className="flex items-center gap-2">
                   <h2 className="text-lg font-bold text-white tracking-tight">
@@ -609,13 +616,18 @@ export default function AdminDashboardClient({ currentUser }: AdminDashboardClie
                   <span className="text-xs px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 font-medium">
                     {rawLeaderboard.length} Participants
                   </span>
+                  {isLeaderboardMaximized && (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-500/20 text-red-300 border border-red-500/30 uppercase tracking-wider">
+                      Fullscreen View
+                    </span>
+                  )}
                 </div>
                 <p className="text-xs text-slate-400 mt-0.5">
                   Ranked by 70% Counted Steps + 30% Target Consistency
                 </p>
               </div>
 
-              {/* Search and Maximize */}
+              {/* Search and Maximize / Minimize Button */}
               <div className="flex items-center gap-3">
                 <div className="relative flex-1 sm:w-64">
                   <Search className="w-4 h-4 text-slate-500 absolute left-3 top-2.5" />
@@ -629,11 +641,26 @@ export default function AdminDashboardClient({ currentUser }: AdminDashboardClie
                 </div>
 
                 <button
-                  onClick={() => setIsLeaderboardMaximized(true)}
-                  className="p-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700/80 text-slate-300 hover:text-white transition-all cursor-pointer shrink-0 shadow-sm"
-                  title="Maximize Leaderboard (Fullscreen View)"
+                  type="button"
+                  onClick={() => setIsLeaderboardMaximized(!isLeaderboardMaximized)}
+                  className={`p-2 sm:px-3 sm:py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm ${
+                    isLeaderboardMaximized
+                      ? "bg-red-500/20 text-red-300 border-red-500/40 hover:bg-red-500/30"
+                      : "bg-slate-900 hover:bg-slate-800 border-slate-700/80 text-slate-300 hover:text-white"
+                  }`}
+                  title={isLeaderboardMaximized ? "Exit Fullscreen (ESC)" : "Maximize Leaderboard (Fullscreen View)"}
                 >
-                  <Maximize2 className="w-4 h-4 text-slate-300" />
+                  {isLeaderboardMaximized ? (
+                    <>
+                      <Minimize2 className="w-4 h-4 text-red-400" />
+                      <span className="hidden sm:inline">Exit Fullscreen (ESC)</span>
+                    </>
+                  ) : (
+                    <>
+                      <Maximize2 className="w-4 h-4 text-slate-300" />
+                      <span className="hidden sm:inline">Maximize</span>
+                    </>
+                  )}
                 </button>
               </div>
             </div>
