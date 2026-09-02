@@ -40,6 +40,7 @@ model StepLog {
   stepCount   Int
   distanceKm  Float     @default(0)
   calories    Int       @default(0)
+  evidenceUrl String?   @db.Text
   note        String?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt

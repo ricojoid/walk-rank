@@ -158,11 +158,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { date, stepCount, note } = await req.json();
+    const { date, stepCount, note, evidenceUrl } = await req.json();
 
     if (!date || stepCount === undefined || stepCount < 0) {
       return NextResponse.json(
-        { error: "Tanggal dan jumlah langkah (minimal 0) wajib diisi." },
+        { error: "Date and step count (min. 0) are required." },
         { status: 400 }
       );
     }
@@ -177,6 +177,14 @@ export async function POST(req: Request) {
     const distanceKm = Number((steps * 0.00076).toFixed(2));
     const calories = Math.round(steps * 0.042);
 
+    // Enforce mandatory photo evidence when recording steps
+    if (steps > 0 && (!evidenceUrl || typeof evidenceUrl !== "string" || evidenceUrl.trim().length === 0)) {
+      return NextResponse.json(
+        { error: "Photo evidence is required! Please attach a photo/screenshot of your step tracker or pedometer." },
+        { status: 400 }
+      );
+    }
+
     const stepLog = await prisma.stepLog.upsert({
       where: {
         userId_date: {
@@ -188,6 +196,7 @@ export async function POST(req: Request) {
         stepCount: steps,
         distanceKm,
         calories,
+        evidenceUrl: evidenceUrl ? evidenceUrl.trim() : null,
         note: note ? note.trim() : null,
       },
       create: {
@@ -196,6 +205,7 @@ export async function POST(req: Request) {
         stepCount: steps,
         distanceKm,
         calories,
+        evidenceUrl: evidenceUrl ? evidenceUrl.trim() : null,
         note: note ? note.trim() : null,
       },
     });
@@ -203,6 +213,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: true, log: stepLog });
   } catch (error) {
     console.error("Error saving step log:", error);
-    return NextResponse.json({ error: "Gagal menyimpan langkah." }, { status: 500 });
+    return NextResponse.json({ error: "Failed to save step log." }, { status: 500 });
   }
 }

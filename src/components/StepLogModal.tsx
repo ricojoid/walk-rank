@@ -1,7 +1,19 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { X, Footprints, Flame, Navigation, Calendar, Check, AlertCircle } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import {
+  X,
+  Footprints,
+  Flame,
+  Navigation,
+  Calendar,
+  Check,
+  AlertCircle,
+  Camera,
+  Upload,
+  Image as ImageIcon,
+  Trash2,
+} from "lucide-react";
 import confetti from "canvas-confetti";
 
 interface StepLogModalProps {
@@ -11,6 +23,7 @@ interface StepLogModalProps {
   initialDate?: string;
   initialSteps?: number;
   initialNote?: string;
+  initialEvidenceUrl?: string | null;
   dailyGoal?: number;
 }
 
@@ -21,6 +34,7 @@ export default function StepLogModal({
   initialDate,
   initialSteps = 0,
   initialNote = "",
+  initialEvidenceUrl = null,
   dailyGoal = 8000,
 }: StepLogModalProps) {
   const [date, setDate] = useState(
@@ -28,17 +42,20 @@ export default function StepLogModal({
   );
   const [stepCount, setStepCount] = useState<number>(initialSteps);
   const [note, setNote] = useState(initialNote);
+  const [evidenceUrl, setEvidenceUrl] = useState<string | null>(initialEvidenceUrl || null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (isOpen) {
       setDate(initialDate || new Date().toISOString().split("T")[0]);
       setStepCount(initialSteps || 0);
       setNote(initialNote || "");
+      setEvidenceUrl(initialEvidenceUrl || null);
       setError("");
     }
-  }, [isOpen, initialDate, initialSteps, initialNote]);
+  }, [isOpen, initialDate, initialSteps, initialNote, initialEvidenceUrl]);
 
   if (!isOpen) return null;
 
@@ -50,14 +67,37 @@ export default function StepLogModal({
     setStepCount((prev) => Math.max(0, prev + amount));
   };
 
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      setError("Evidence file size exceeds 5MB limit.");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      if (typeof reader.result === "string") {
+        setEvidenceUrl(reader.result);
+        setError("");
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!date) {
-      setError("Pilih tanggal terlebih dahulu.");
+      setError("Please select a date.");
       return;
     }
     if (stepCount < 0) {
-      setError("Jumlah langkah tidak boleh negatif.");
+      setError("Step count cannot be negative.");
+      return;
+    }
+    if (stepCount > 0 && !evidenceUrl) {
+      setError("Photo evidence is mandatory. Please upload a screenshot/photo of your step count.");
       return;
     }
 
@@ -72,6 +112,7 @@ export default function StepLogModal({
           date,
           stepCount,
           note,
+          evidenceUrl,
         }),
       });
 
@@ -224,6 +265,73 @@ export default function StepLogModal({
                 </p>
               </div>
             </div>
+          </div>
+
+          {/* Photo Evidence Upload (Mandatory) */}
+          <div className="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800 space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                <Camera className="w-3.5 h-3.5 text-red-400" />
+                <span>Photo Evidence <span className="text-red-400">*</span></span>
+              </label>
+              <span className="text-[10px] text-slate-400">Pedometer/Smartwatch Screenshot</span>
+            </div>
+
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleFileUpload}
+              className="hidden"
+            />
+
+            {evidenceUrl ? (
+              <div className="relative rounded-xl overflow-hidden border border-slate-700 bg-slate-950/60 p-2 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5 overflow-hidden">
+                  <img
+                    src={evidenceUrl}
+                    alt="Evidence Preview"
+                    className="w-12 h-12 rounded-lg object-cover border border-slate-700 shrink-0"
+                  />
+                  <div className="text-left truncate">
+                    <p className="text-xs font-semibold text-emerald-400 flex items-center gap-1">
+                      <Check className="w-3.5 h-3.5" /> Evidence Attached
+                    </p>
+                    <p className="text-[10px] text-slate-400 truncate">Ready for admin verification</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="px-2.5 py-1 text-[11px] font-semibold text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-lg border border-slate-700 transition-colors cursor-pointer"
+                  >
+                    Change
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEvidenceUrl(null)}
+                    className="p-1 text-slate-400 hover:text-rose-400 rounded-lg hover:bg-rose-950/20 transition-colors cursor-pointer"
+                    title="Remove Photo"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="w-full py-4 border-2 border-dashed border-slate-700 hover:border-red-500/60 rounded-xl flex flex-col items-center justify-center gap-1.5 bg-slate-950/40 hover:bg-slate-900/60 transition-all cursor-pointer group"
+              >
+                <Upload className="w-5 h-5 text-slate-500 group-hover:text-red-400 transition-colors" />
+                <span className="text-xs font-semibold text-slate-300 group-hover:text-white transition-colors">
+                  Upload Screenshot / Photo
+                </span>
+                <span className="text-[10px] text-slate-500">Supports JPG, PNG, WEBP (Max 5MB)</span>
+              </button>
+            )}
           </div>
 
           {/* Activity Note */}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useTransition } from "react";
+import { useState, useEffect, useRef, useTransition } from "react";
 import {
   Footprints,
   Flame,
@@ -19,6 +19,11 @@ import {
   ArrowUpRight,
   Filter,
   UserCog,
+  Camera,
+  Upload,
+  Image as ImageIcon,
+  AlertCircle,
+  Check,
 } from "lucide-react";
 import {
   AreaChart,
@@ -32,6 +37,7 @@ import {
 import StepLogModal from "@/components/StepLogModal";
 import MaximizedLeaderboardModal from "@/components/MaximizedLeaderboardModal";
 import ProfileEditModal from "@/components/ProfileEditModal";
+import EvidenceViewerModal from "@/components/EvidenceViewerModal";
 import confetti from "canvas-confetti";
 import { Maximize2 } from "lucide-react";
 
@@ -57,9 +63,14 @@ export default function UserDashboardClient({ initialUser }: UserDashboardClient
   const [editLog, setEditLog] = useState<any>(null);
   const [todayInputSteps, setTodayInputSteps] = useState<number>(0);
   const [todayInputNote, setTodayInputNote] = useState<string>("");
+  const [todayEvidenceUrl, setTodayEvidenceUrl] = useState<string | null>(null);
+  const [quickSaveError, setQuickSaveError] = useState<string>("");
+  const [quickSaveSuccess, setQuickSaveSuccess] = useState<string>("");
+  const [selectedEvidence, setSelectedEvidence] = useState<any>(null);
   const [saveLoading, setSaveLoading] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState<string | null>(null);
   const [isLeaderboardMaximized, setIsLeaderboardMaximized] = useState(false);
+  const quickFileInputRef = useRef<HTMLInputElement>(null);
 
   const fetchDashboardData = async () => {
     try {
@@ -71,6 +82,7 @@ export default function UserDashboardClient({ initialUser }: UserDashboardClient
         if (json.today) {
           setTodayInputSteps(json.today.stepCount || 0);
           setTodayInputNote(json.today.note || "");
+          setTodayEvidenceUrl(json.today.evidenceUrl || null);
         }
       }
     } catch (err) {
@@ -84,8 +96,35 @@ export default function UserDashboardClient({ initialUser }: UserDashboardClient
     fetchDashboardData();
   }, []);
 
+  const handleQuickFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      setQuickSaveError("Evidence file size exceeds 5MB limit.");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      if (typeof reader.result === "string") {
+        setTodayEvidenceUrl(reader.result);
+        setQuickSaveError("");
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleQuickSaveToday = async (e: React.FormEvent) => {
     e.preventDefault();
+    setQuickSaveError("");
+    setQuickSaveSuccess("");
+
+    if (todayInputSteps > 0 && !todayEvidenceUrl) {
+      setQuickSaveError("Photo evidence is mandatory. Please upload a screenshot/photo of your step count.");
+      return;
+    }
+
     setSaveLoading(true);
     try {
       const todayStr = new Date().toISOString().split("T")[0];
@@ -96,19 +135,25 @@ export default function UserDashboardClient({ initialUser }: UserDashboardClient
           date: todayStr,
           stepCount: todayInputSteps,
           note: todayInputNote,
+          evidenceUrl: todayEvidenceUrl,
         }),
       });
 
-      if (res.ok) {
-        if (todayInputSteps >= initialUser.dailyGoal) {
-          try {
-            confetti({ particleCount: 70, spread: 60, origin: { y: 0.6 } });
-          } catch {}
-        }
-        await fetchDashboardData();
+      const resData = await res.json();
+      if (!res.ok) {
+        throw new Error(resData.error || "Failed to save steps.");
       }
-    } catch (err) {
-      console.error(err);
+
+      setQuickSaveSuccess("Today's activity saved successfully!");
+      if (todayInputSteps >= initialUser.dailyGoal) {
+        try {
+          confetti({ particleCount: 70, spread: 60, origin: { y: 0.6 } });
+        } catch {}
+      }
+      await fetchDashboardData();
+      setTimeout(() => setQuickSaveSuccess(""), 4000);
+    } catch (err: any) {
+      setQuickSaveError(err.message || "Failed to save step activity.");
     } finally {
       setSaveLoading(false);
     }
@@ -273,6 +318,20 @@ export default function UserDashboardClient({ initialUser }: UserDashboardClient
               )}
             </div>
 
+            {quickSaveError && (
+              <div className="mb-3 p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-center gap-2 animate-in fade-in duration-150">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{quickSaveError}</span>
+              </div>
+            )}
+
+            {quickSaveSuccess && (
+              <div className="mb-3 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs flex items-center gap-2 animate-in fade-in duration-150">
+                <Check className="w-4 h-4 shrink-0" />
+                <span>{quickSaveSuccess}</span>
+              </div>
+            )}
+
             <form onSubmit={handleQuickSaveToday} className="space-y-4">
               <div>
                 <div className="flex items-center justify-between mb-1.5">
@@ -357,6 +416,73 @@ export default function UserDashboardClient({ initialUser }: UserDashboardClient
                     </p>
                   </div>
                 </div>
+              </div>
+
+              {/* Photo Evidence Upload (Mandatory) */}
+              <div className="p-3.5 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                    <Camera className="w-3.5 h-3.5 text-red-400" />
+                    <span>Photo Evidence <span className="text-red-400">*</span></span>
+                  </label>
+                  <span className="text-[10px] text-slate-400">Smartwatch / Pedometer Screenshot</span>
+                </div>
+
+                <input
+                  ref={quickFileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleQuickFileUpload}
+                  className="hidden"
+                />
+
+                {todayEvidenceUrl ? (
+                  <div className="relative rounded-xl overflow-hidden border border-slate-700 bg-slate-950/70 p-2.5 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 overflow-hidden">
+                      <img
+                        src={todayEvidenceUrl}
+                        alt="Evidence Preview"
+                        className="w-12 h-12 rounded-lg object-cover border border-slate-700 shrink-0"
+                      />
+                      <div className="text-left truncate">
+                        <p className="text-xs font-semibold text-emerald-400 flex items-center gap-1">
+                          <Check className="w-3.5 h-3.5" /> Evidence Attached
+                        </p>
+                        <p className="text-[10px] text-slate-400 truncate">Ready for admin verification</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => quickFileInputRef.current?.click()}
+                        className="px-2.5 py-1 text-[11px] font-semibold text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-lg border border-slate-700 transition-colors cursor-pointer"
+                      >
+                        Change
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setTodayEvidenceUrl(null)}
+                        className="p-1 text-slate-400 hover:text-rose-400 rounded-lg hover:bg-rose-950/20 transition-colors cursor-pointer"
+                        title="Remove Photo"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => quickFileInputRef.current?.click()}
+                    className="w-full py-3.5 border-2 border-dashed border-slate-700 hover:border-red-500/60 rounded-xl flex flex-col items-center justify-center gap-1 bg-slate-950/40 hover:bg-slate-900/60 transition-all cursor-pointer group"
+                  >
+                    <Upload className="w-4 h-4 text-slate-500 group-hover:text-red-400 transition-colors" />
+                    <span className="text-xs font-semibold text-slate-300 group-hover:text-white transition-colors">
+                      Upload Step Count Photo / Screenshot
+                    </span>
+                    <span className="text-[10px] text-slate-500">Supports JPG, PNG, WEBP (Max 5MB)</span>
+                  </button>
+                )}
               </div>
 
               {/* Note input */}
@@ -743,6 +869,7 @@ export default function UserDashboardClient({ initialUser }: UserDashboardClient
                   <th className="px-4 py-3">Steps</th>
                   <th className="px-4 py-3">Goal Status</th>
                   <th className="px-4 py-3">Est. Distance & Calories</th>
+                  <th className="px-4 py-3">Evidence</th>
                   <th className="px-4 py-3">Notes</th>
                   <th className="px-4 py-3 text-right">Actions</th>
                 </tr>
@@ -777,6 +904,33 @@ export default function UserDashboardClient({ initialUser }: UserDashboardClient
                       </td>
                       <td className="px-4 py-3 text-slate-400">
                         {log.distanceKm} km • {log.calories.toLocaleString("en-US")} kcal
+                      </td>
+                      <td className="px-4 py-3">
+                        {log.evidenceUrl ? (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setSelectedEvidence({
+                                evidenceUrl: log.evidenceUrl,
+                                userName: initialUser.name,
+                                date: log.date,
+                                stepCount: log.stepCount,
+                                note: log.note,
+                              })
+                            }
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 hover:border-red-500/40 transition-colors cursor-pointer"
+                            title="Click to inspect photo evidence"
+                          >
+                            <img
+                              src={log.evidenceUrl}
+                              alt="Evidence"
+                              className="w-4 h-4 rounded object-cover border border-slate-700"
+                            />
+                            <span>View Photo</span>
+                          </button>
+                        ) : (
+                          <span className="text-slate-600 text-[11px]">-</span>
+                        )}
                       </td>
                       <td className="px-4 py-3 text-slate-400 italic max-w-xs truncate">
                         {log.note || "-"}
@@ -823,6 +977,7 @@ export default function UserDashboardClient({ initialUser }: UserDashboardClient
         }
         initialSteps={editLog ? editLog.stepCount : 0}
         initialNote={editLog ? editLog.note || "" : ""}
+        initialEvidenceUrl={editLog ? editLog.evidenceUrl : null}
         dailyGoal={goal}
       />
 
@@ -839,6 +994,13 @@ export default function UserDashboardClient({ initialUser }: UserDashboardClient
         isOpen={isProfileModalOpen}
         onClose={() => setIsProfileModalOpen(false)}
         user={initialUser}
+      />
+
+      {/* Evidence Viewer Modal */}
+      <EvidenceViewerModal
+        isOpen={!!selectedEvidence}
+        onClose={() => setSelectedEvidence(null)}
+        {...selectedEvidence}
       />
     </div>
   );

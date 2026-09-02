@@ -13,7 +13,9 @@ import {
   Clock,
   Shield,
   User,
+  Image as ImageIcon,
 } from "lucide-react";
+import EvidenceViewerModal from "@/components/EvidenceViewerModal";
 
 interface UserDetailModalProps {
   isOpen: boolean;
@@ -40,6 +42,7 @@ export default function UserDetailModal({
   const [editRole, setEditRole] = useState<"USER" | "SUPER_ADMIN">("USER");
   const [editGoal, setEditGoal] = useState<number>(10000);
   const [saveLoading, setSaveLoading] = useState(false);
+  const [selectedEvidence, setSelectedEvidence] = useState<any>(null);
 
   useEffect(() => {
     if (isOpen && userId) {
@@ -279,6 +282,7 @@ export default function UserDetailModal({
                       <th className="px-3 py-2.5">Counted Steps</th>
                       <th className="px-3 py-2.5">Excess</th>
                       <th className="px-3 py-2.5">Target (8k) & Score</th>
+                      <th className="px-3 py-2.5">Photo Evidence</th>
                       <th className="px-3 py-2.5">Notes</th>
                     </tr>
                   </thead>
@@ -325,6 +329,33 @@ export default function UserDetailModal({
                               </span>
                             )}
                           </td>
+                          <td className="px-3 py-2.5 whitespace-nowrap">
+                            {log.evidenceUrl ? (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setSelectedEvidence({
+                                    evidenceUrl: log.evidenceUrl,
+                                    userName: userData?.name,
+                                    date: log.date,
+                                    stepCount: log.stepCount,
+                                    note: log.note,
+                                  })
+                                }
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 hover:border-red-500/50 transition-colors cursor-pointer"
+                                title="Click to view full photo evidence"
+                              >
+                                <img
+                                  src={log.evidenceUrl}
+                                  alt="Evidence"
+                                  className="w-4 h-4 rounded object-cover border border-slate-700"
+                                />
+                                <span>Inspect Photo</span>
+                              </button>
+                            ) : (
+                              <span className="text-slate-600 text-[11px]">-</span>
+                            )}
+                          </td>
                           <td className="px-3 py-2.5 text-slate-400 italic max-w-xs truncate">
                             {log.note || "-"}
                           </td>
@@ -348,6 +379,13 @@ export default function UserDetailModal({
           </button>
         </div>
       </div>
+
+      {/* Evidence Viewer Modal */}
+      <EvidenceViewerModal
+        isOpen={!!selectedEvidence}
+        onClose={() => setSelectedEvidence(null)}
+        {...selectedEvidence}
+      />
     </div>
   );
 }
