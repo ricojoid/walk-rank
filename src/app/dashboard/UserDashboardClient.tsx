@@ -24,6 +24,7 @@ import {
   Image as ImageIcon,
   AlertCircle,
   Check,
+  RefreshCw,
 } from "lucide-react";
 import {
   AreaChart,
@@ -72,14 +73,15 @@ export default function UserDashboardClient({ initialUser }: UserDashboardClient
   const [isLeaderboardMaximized, setIsLeaderboardMaximized] = useState(false);
   const quickFileInputRef = useRef<HTMLInputElement>(null);
 
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = async (isSilent = false) => {
     try {
-      setLoading(true);
+      if (!isSilent) setLoading(true);
       const res = await fetch("/api/steps?limit=60");
       if (res.ok) {
         const json = await res.json();
         setData(json);
-        if (json.today) {
+        // Only update today's input form fields on manual/initial load (not during silent background polling)
+        if (json.today && !isSilent) {
           setTodayInputSteps(json.today.stepCount || 0);
           setTodayInputNote(json.today.note || "");
           setTodayEvidenceUrl(json.today.evidenceUrl || null);
@@ -88,12 +90,53 @@ export default function UserDashboardClient({ initialUser }: UserDashboardClient
     } catch (err) {
       console.error("Error fetching steps:", err);
     } finally {
-      setLoading(false);
+      if (!isSilent) setLoading(false);
     }
   };
 
   useEffect(() => {
     fetchDashboardData();
+  }, []);
+
+  // Smart Background Polling (15s interval + focus detection + visibility API)
+  useEffect(() => {
+    let intervalId: NodeJS.Timeout | null = null;
+
+    const startPolling = () => {
+      if (intervalId) clearInterval(intervalId);
+      intervalId = setInterval(() => {
+        if (!document.hidden) {
+          fetchDashboardData(true);
+        }
+      }, 15000);
+    };
+
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        // Immediately fetch fresh rankings on tab focus
+        fetchDashboardData(true);
+        startPolling();
+      } else if (intervalId) {
+        // Pause polling when tab is hidden to conserve resources
+        clearInterval(intervalId);
+      }
+    };
+
+    const handleFocus = () => {
+      if (!document.hidden) {
+        fetchDashboardData(true);
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("focus", handleFocus);
+    startPolling();
+
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("focus", handleFocus);
+    };
   }, []);
 
   const handleQuickFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -741,12 +784,25 @@ export default function UserDashboardClient({ initialUser }: UserDashboardClient
         <div className="rounded-3xl bg-[#121826] border border-slate-800 p-6 shadow-xl flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-800">
-              <h3 className="font-bold text-sm text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
-                <Award className="w-4 h-4 text-amber-400" />
-                Today's Leaderboard
-              </h3>
               <div className="flex items-center gap-2">
-                <span className="text-[10px] text-slate-400">Top 5</span>
+                <h3 className="font-bold text-sm text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
+                  <Award className="w-4 h-4 text-amber-400" />
+                  Today's Leaderboard
+                </h3>
+                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  Live (15s)
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => fetchDashboardData(false)}
+                  className="p-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors cursor-pointer"
+                  title="Refresh Leaderboard"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin text-red-400" : ""}`} />
+                </button>
                 <button
                   type="button"
                   onClick={() => setIsLeaderboardMaximized(true)}

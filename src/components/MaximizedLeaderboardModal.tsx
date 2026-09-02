@@ -15,6 +15,7 @@ import {
   Trophy,
   Crown,
   Medal,
+  RefreshCw,
 } from "lucide-react";
 
 interface MaximizedLeaderboardModalProps {
@@ -35,8 +36,8 @@ export default function MaximizedLeaderboardModal({
   const [leaderboard, setLeaderboard] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
 
-  const fetchLeaderboardData = async (selectedPeriod: "today" | "7d" | "30d") => {
-    setLoading(true);
+  const fetchLeaderboardData = async (selectedPeriod: "today" | "7d" | "30d", isSilent = false) => {
+    if (!isSilent) setLoading(true);
     try {
       const res = await fetch(`/api/leaderboard?period=${selectedPeriod}`);
       if (res.ok) {
@@ -46,7 +47,7 @@ export default function MaximizedLeaderboardModal({
     } catch (err) {
       console.error("Leaderboard fetch error:", err);
     } finally {
-      setLoading(false);
+      if (!isSilent) setLoading(false);
     }
   };
 
@@ -54,6 +55,47 @@ export default function MaximizedLeaderboardModal({
     if (isOpen) {
       fetchLeaderboardData(period);
     }
+  }, [isOpen, period]);
+
+  // Smart Background Polling (15s interval + focus detection + visibility API)
+  useEffect(() => {
+    if (!isOpen) return;
+
+    let intervalId: NodeJS.Timeout | null = null;
+
+    const startPolling = () => {
+      if (intervalId) clearInterval(intervalId);
+      intervalId = setInterval(() => {
+        if (!document.hidden) {
+          fetchLeaderboardData(period, true);
+        }
+      }, 15000);
+    };
+
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        fetchLeaderboardData(period, true);
+        startPolling();
+      } else if (intervalId) {
+        clearInterval(intervalId);
+      }
+    };
+
+    const handleFocus = () => {
+      if (!document.hidden) {
+        fetchLeaderboardData(period, true);
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("focus", handleFocus);
+    startPolling();
+
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("focus", handleFocus);
+    };
   }, [isOpen, period]);
 
   // Handle ESC key to close
@@ -107,8 +149,14 @@ export default function MaximizedLeaderboardModal({
           </div>
         </div>
 
-        {/* Right Controls: Period Selector & Minimize Button */}
-        <div className="flex items-center gap-3">
+        {/* Right Controls: Live Badge, Period Selector & Minimize Button */}
+        <div className="flex items-center gap-2.5">
+          {/* Live Sync Status Badge */}
+          <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            Live (15s)
+          </span>
+
           {/* Period selector */}
           <div className="flex items-center gap-1 p-1 rounded-xl bg-slate-900 border border-slate-800">
             <button
@@ -142,6 +190,16 @@ export default function MaximizedLeaderboardModal({
               Last 30 Days
             </button>
           </div>
+
+          {/* Refresh button */}
+          <button
+            type="button"
+            onClick={() => fetchLeaderboardData(period, false)}
+            className="p-2 text-slate-400 hover:text-white bg-slate-900 hover:bg-slate-800 rounded-xl border border-slate-800 transition-colors cursor-pointer"
+            title="Refresh Leaderboard"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin text-red-400" : ""}`} />
+          </button>
 
           {/* Minimize / Exit button */}
           <button
