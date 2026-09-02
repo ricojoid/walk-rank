@@ -36,7 +36,6 @@ export function signToken(user: SessionUser): string {
       role: user.role,
       department: user.department,
       dailyGoal: user.dailyGoal,
-      avatarUrl: user.avatarUrl,
     },
     JWT_SECRET,
     { expiresIn: "7d" }

@@ -106,9 +106,9 @@ export async function GET(req: Request) {
       Math.round((endDate.getTime() - startDate.getTime()) / 86400000) + 1
     );
 
-    // Find the maximum counted steps among all participants in this period
+    // Find the highest accumulated counted steps among all participants in this date range
     const allStats = Array.from(userStatsMap.values());
-    const maxCountedSteps = Math.max(
+    const highestAccumulatedCountedSteps = Math.max(
       ...allStats.map((s) => s.totalCountedSteps),
       0
     );
@@ -117,18 +117,18 @@ export async function GET(req: Request) {
       .map((item) => {
         const avgSteps = item.daysLogged > 0 ? Math.round(item.totalCountedSteps / item.daysLogged) : 0;
         const goalRate =
-          item.daysLogged > 0 ? Math.round((item.goalsMetCount / item.daysLogged) * 100) : 0;
+          diffDays > 0 ? Math.round((item.goalsMetCount / diffDays) * 100) : 0;
 
-        // Bobot 70%: (totalCountedSteps / maxCountedSteps) * 70
+        // Bobot 70%: (total step akumulasi sendiri / total step terbanyak di rentang tanggal) * 70
         const stepScore =
-          maxCountedSteps > 0
-            ? Number(((item.totalCountedSteps / maxCountedSteps) * 70).toFixed(2))
+          highestAccumulatedCountedSteps > 0
+            ? Number(((item.totalCountedSteps / highestAccumulatedCountedSteps) * 70).toFixed(2))
             : 0;
 
-        // Bobot 30%: (goalsMetCount / diffDays) * 30
+        // Bobot 30%: Konsistensi mencapai target harian terhadap jumlah hari rentang tanggal
         const consistencyScore =
           diffDays > 0
-            ? Number(((item.goalsMetCount / diffDays) * 30).toFixed(2))
+            ? Math.min(30, Number(((item.goalsMetCount / diffDays) * 30).toFixed(2)))
             : 0;
 
         // Final Score: 0 - 100
@@ -146,9 +146,11 @@ export async function GET(req: Request) {
           stepScore,
           consistencyScore,
           goalsMetCount: item.goalsMetCount,
+          targetAchievedDays: item.goalsMetCount,
           totalDaysInRange: diffDays,
-          maxCountedSteps,
+          maxCountedSteps: highestAccumulatedCountedSteps,
           totalCountedSteps: item.totalCountedSteps,
+          countedSteps: item.totalCountedSteps,
           totalExcessSteps: item.totalExcessSteps,
           totalSteps: item.totalCountedSteps,
           totalActualSteps: item.totalActualSteps,
@@ -158,6 +160,7 @@ export async function GET(req: Request) {
           avgSteps,
           highestDaySteps: item.highestDaySteps,
           goalCompletionRate: goalRate,
+          consistencyRate: goalRate,
           isCurrentUser: item.user.id === user.id,
         };
       })

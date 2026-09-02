@@ -64,12 +64,8 @@ export default function LoginPage() {
         throw new Error(data?.error || "Autentikasi gagal. Silakan coba lagi.");
       }
 
-      if (data.user.role === "SUPER_ADMIN") {
-        router.push("/admin");
-      } else {
-        router.push("/dashboard");
-      }
-      router.refresh();
+      const targetUrl = data.user.role === "SUPER_ADMIN" ? "/admin" : "/dashboard";
+      window.location.href = targetUrl;
     } catch (err: any) {
       setError(err.message || "An unexpected error occurred.");
     } finally {

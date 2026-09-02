@@ -237,18 +237,20 @@ export default function UserDashboardClient({ initialUser }: UserDashboardClient
   }
 
   const todayLog = data?.today || { stepCount: 0 };
-  const stats = data?.stats || {
-    totalSteps: 0,
-    totalDistance: 0,
-    totalCalories: 0,
-    avgSteps: 0,
-    streak: 0,
-    dailyGoal: initialUser.dailyGoal,
+  const stats = {
+    totalSteps: data?.stats?.totalSteps ?? 0,
+    totalDistance: data?.stats?.totalDistance ?? 0,
+    totalCalories: data?.stats?.totalCalories ?? 0,
+    avgSteps: data?.stats?.avgSteps ?? 0,
+    maxSteps: data?.stats?.maxSteps ?? 0,
+    logDaysCount: data?.stats?.logDaysCount ?? 0,
+    streak: data?.stats?.streak ?? 0,
+    dailyGoal: data?.stats?.dailyGoal ?? initialUser?.dailyGoal ?? 8000,
   };
   const logs = data?.logs || [];
   const miniLeaderboard = data?.miniLeaderboard || [];
 
-  const goal = stats.dailyGoal || 8000;
+  const goal = Number(stats.dailyGoal) || 8000;
   const todayProgress = Math.min(100, Math.round((todayLog.stepCount / goal) * 100));
   const isGoalReached = todayLog.stepCount >= goal;
 

@@ -766,9 +766,9 @@ export default function AdminDashboardClient({ currentUser }: AdminDashboardClie
                     </div>
                     <div className="p-2.5 rounded-xl bg-slate-950/60 border border-slate-800 text-center">
                       <p className="text-xs text-slate-400">Final Score</p>
-                      <p className="text-xl font-black text-white">{Number(top2.finalScore).toFixed(1)}</p>
+                      <p className="text-xl font-black text-white">{Number(top2.finalScore || 0).toFixed(1)}</p>
                       <p className="text-[10px] text-slate-500 mt-0.5">
-                        {Number(top2.countedSteps).toLocaleString("en-US")} counted steps • {top2.targetAchievedDays} goal days
+                        {Number(top2.totalCountedSteps || top2.countedSteps || 0).toLocaleString("en-US")} counted steps • {top2.goalsMetCount ?? top2.targetAchievedDays ?? 0} goal days
                       </p>
                     </div>
                   </div>
@@ -812,9 +812,9 @@ export default function AdminDashboardClient({ currentUser }: AdminDashboardClie
                     </div>
                     <div className="p-3 rounded-xl bg-slate-950/80 border border-amber-500/30 text-center">
                       <p className="text-xs text-amber-300/80 font-medium">Final Score</p>
-                      <p className="text-2xl font-black text-amber-400">{Number(top1.finalScore).toFixed(1)}</p>
+                      <p className="text-2xl font-black text-amber-400">{Number(top1.finalScore || 0).toFixed(1)}</p>
                       <p className="text-[10px] text-slate-400 mt-0.5">
-                        {Number(top1.countedSteps).toLocaleString("en-US")} counted steps • {top1.targetAchievedDays} goal days
+                        {Number(top1.totalCountedSteps || top1.countedSteps || 0).toLocaleString("en-US")} counted steps • {top1.goalsMetCount ?? top1.targetAchievedDays ?? 0} goal days
                       </p>
                     </div>
                   </div>
@@ -852,9 +852,9 @@ export default function AdminDashboardClient({ currentUser }: AdminDashboardClie
                     </div>
                     <div className="p-2.5 rounded-xl bg-slate-950/60 border border-slate-800 text-center">
                       <p className="text-xs text-slate-400">Final Score</p>
-                      <p className="text-xl font-black text-white">{Number(top3.finalScore).toFixed(1)}</p>
+                      <p className="text-xl font-black text-white">{Number(top3.finalScore || 0).toFixed(1)}</p>
                       <p className="text-[10px] text-slate-500 mt-0.5">
-                        {Number(top3.countedSteps).toLocaleString("en-US")} counted steps • {top3.targetAchievedDays} goal days
+                        {Number(top3.totalCountedSteps || top3.countedSteps || 0).toLocaleString("en-US")} counted steps • {top3.goalsMetCount ?? top3.targetAchievedDays ?? 0} goal days
                       </p>
                     </div>
                   </div>
@@ -899,23 +899,23 @@ export default function AdminDashboardClient({ currentUser }: AdminDashboardClie
                       </td>
                       <td className="px-4 py-3.5">
                         <span className="font-black text-sm text-red-400">
-                          {Number(user.finalScore).toFixed(1)}
+                          {Number(user.finalScore || 0).toFixed(1)}
                         </span>
                       </td>
                       <td className="px-4 py-3.5">
                         <p className="font-semibold text-slate-200">
-                          {Number(user.countedSteps).toLocaleString("en-US")} steps
+                          {Number(user.totalCountedSteps || user.countedSteps || 0).toLocaleString("en-US")} steps
                         </p>
                         <p className="text-[10px] text-slate-400">
-                          {Number(user.stepScore).toFixed(1)} / 70 pts
+                          {Number(user.stepScore || 0).toFixed(1)} / 70 pts
                         </p>
                       </td>
                       <td className="px-4 py-3.5">
                         <p className="font-semibold text-emerald-400">
-                          {user.targetAchievedDays} days ({Number(user.consistencyRate).toFixed(0)}%)
+                          {user.goalsMetCount ?? user.targetAchievedDays ?? 0} days ({Number(user.goalCompletionRate ?? user.consistencyRate ?? 0).toFixed(0)}%)
                         </p>
                         <p className="text-[10px] text-slate-400">
-                          {Number(user.consistencyScore).toFixed(1)} / 30 pts
+                          {Number(user.consistencyScore || 0).toFixed(1)} / 30 pts
                         </p>
                       </td>
                       <td className="px-4 py-3.5">
