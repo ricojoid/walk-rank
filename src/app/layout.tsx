@@ -11,6 +11,14 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "WalkRank - Modern Step Tracker & Analytics",
   description: "Aplikasi pelacak jumlah langkah harian dengan analitik untuk User dan Super Admin.",
+  icons: {
+    icon: [
+      { url: "/icon.png?v=2", type: "image/png" },
+      { url: "/favicon.ico?v=2", sizes: "any" },
+    ],
+    shortcut: "/icon.png?v=2",
+    apple: "/icon.png?v=2",
+  },
 };
 
 export default function RootLayout({
