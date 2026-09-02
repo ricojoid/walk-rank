@@ -267,7 +267,7 @@ export default function AdminDashboardClient({ currentUser }: AdminDashboardClie
       : filteredLeaderboard;
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto">
+    <div className="space-y-6 w-full">
       {/* 1. Executive Top Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 sm:p-7 rounded-3xl bg-[#121826] border border-slate-800 shadow-xl relative overflow-hidden">
         <div className="space-y-1.5 z-10">
