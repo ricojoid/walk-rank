@@ -10,17 +10,16 @@ import {
   Users,
   Award,
   Search,
-  ArrowUpRight,
-  ArrowDownRight,
-  Sparkles,
-  Building2,
   CheckCircle2,
   UserCog,
   Maximize2,
-  Minimize2,
-  Crown,
   Trophy,
   Medal,
+  UserPlus,
+  Trash2,
+  Eye,
+  BarChart3,
+  Filter,
 } from "lucide-react";
 import confetti from "canvas-confetti";
 import {
@@ -33,6 +32,8 @@ import {
   CartesianGrid,
 } from "recharts";
 import UserDetailModal from "@/components/UserDetailModal";
+import CreateUserModal from "@/components/CreateUserModal";
+import DeleteUserConfirmModal from "@/components/DeleteUserConfirmModal";
 
 interface AdminDashboardClientProps {
   currentUser: {
@@ -52,6 +53,7 @@ export default function AdminDashboardClient({ currentUser }: AdminDashboardClie
     .toISOString()
     .split("T")[0];
 
+  const [activeTab, setActiveTab] = useState<"analytics" | "users">("analytics");
   const [preset, setPreset] = useState<"today" | "7d" | "30d" | "month" | "custom">("7d");
   const [startDate, setStartDate] = useState<string>(last7DaysStr);
   const [endDate, setEndDate] = useState<string>(todayStr);
@@ -63,6 +65,14 @@ export default function AdminDashboardClient({ currentUser }: AdminDashboardClie
   const [analyticsData, setAnalyticsData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
+
+  // User management state
+  const [usersList, setUsersList] = useState<any[]>([]);
+  const [usersLoading, setUsersLoading] = useState(false);
+  const [userSearchTerm, setUserSearchTerm] = useState("");
+  const [userRoleFilter, setUserRoleFilter] = useState<"ALL" | "USER" | "SUPER_ADMIN">("ALL");
+  const [isCreateUserOpen, setIsCreateUserOpen] = useState(false);
+  const [deleteTargetUser, setDeleteTargetUser] = useState<any | null>(null);
 
   // User inspection modal
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
@@ -81,6 +91,21 @@ export default function AdminDashboardClient({ currentUser }: AdminDashboardClie
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isLeaderboardMaximized]);
 
+  const fetchUsersList = async () => {
+    setUsersLoading(true);
+    try {
+      const res = await fetch("/api/admin/users");
+      if (res.ok) {
+        const data = await res.json();
+        setUsersList(data.users || []);
+      }
+    } catch (err) {
+      console.error("Failed to fetch users list:", err);
+    } finally {
+      setUsersLoading(false);
+    }
+  };
+
   const fetchAnalytics = async (sDate: string, eDate: string) => {
     setLoading(true);
     try {
@@ -98,7 +123,24 @@ export default function AdminDashboardClient({ currentUser }: AdminDashboardClie
 
   useEffect(() => {
     fetchAnalytics(startDate, endDate);
+    fetchUsersList();
   }, []);
+
+  const handleQuickRoleChange = async (userId: string, newRole: "USER" | "SUPER_ADMIN") => {
+    try {
+      const res = await fetch("/api/admin/users", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, role: newRole }),
+      });
+      if (res.ok) {
+        await fetchUsersList();
+        await fetchAnalytics(startDate, endDate);
+      }
+    } catch (err) {
+      console.error("Failed to change role:", err);
+    }
+  };
 
   const handleApplyPreset = (type: "today" | "7d" | "30d" | "month") => {
     setPreset(type);
@@ -145,6 +187,7 @@ export default function AdminDashboardClient({ currentUser }: AdminDashboardClie
         body: JSON.stringify({ userId, role: newRole, dailyGoal }),
       });
       if (res.ok) {
+        await fetchUsersList();
         await fetchAnalytics(startDate, endDate);
       }
     } catch (err) {
@@ -188,7 +231,6 @@ export default function AdminDashboardClient({ currentUser }: AdminDashboardClie
 
   const timeSeries = analyticsData?.timeSeriesData || [];
   const rawLeaderboard = analyticsData?.leaderboard || [];
-  const departmentStats = analyticsData?.departmentStats || [];
 
   // Filter leaderboard by search term (name or email)
   const filteredLeaderboard = rawLeaderboard.filter((u: any) => {
@@ -198,24 +240,30 @@ export default function AdminDashboardClient({ currentUser }: AdminDashboardClie
     );
   });
 
+  // Filter users for Employee Management tab
+  const filteredUsersList = usersList.filter((u: any) => {
+    const matchesSearch =
+      u.name.toLowerCase().includes(userSearchTerm.toLowerCase()) ||
+      u.email.toLowerCase().includes(userSearchTerm.toLowerCase());
+    const matchesRole =
+      userRoleFilter === "ALL" || u.role === userRoleFilter;
+    return matchesSearch && matchesRole;
+  });
+
+  const totalAdminsCount = usersList.filter((u) => u.role === "SUPER_ADMIN").length;
+  const totalRegularUsersCount = usersList.filter((u) => u.role === "USER").length;
+  const totalLogsAcrossAllUsers = usersList.reduce((acc, u) => acc + (u._count?.stepLogs || 0), 0);
+
   // Top 3 Podium Walkers
   const top1 = rawLeaderboard[0];
   const top2 = rawLeaderboard[1];
   const top3 = rawLeaderboard[2];
 
-  // If search is active or showAllInTable is true, show all matching rows.
-  // Otherwise, top 3 are on the podium and table shows rank 4 onwards!
   const hasPodium = rawLeaderboard.length >= 3 && !searchTerm;
   const tableDisplayList =
     hasPodium && !showAllInTable
       ? filteredLeaderboard.slice(3)
       : filteredLeaderboard;
-
-  // Day-over-day delta
-  const stepsDelta =
-    kpi.yesterday.totalSteps > 0
-      ? Math.round(((kpi.today.totalSteps - kpi.yesterday.totalSteps) / kpi.yesterday.totalSteps) * 100)
-      : 0;
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
@@ -228,7 +276,7 @@ export default function AdminDashboardClient({ currentUser }: AdminDashboardClie
               TMMIN Super Admin
             </span>
             <span className="text-xs text-slate-400 font-medium">
-              • {kpi.range.totalUsers} Registered Employees
+              • {usersList.length || kpi.range.totalUsers} Registered Employees
             </span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
@@ -239,12 +287,20 @@ export default function AdminDashboardClient({ currentUser }: AdminDashboardClie
           </p>
         </div>
 
-        {/* Action Button: Export CSV */}
-        <div className="flex items-center gap-3 z-10 shrink-0">
+        {/* Action Buttons: Add User & Export CSV */}
+        <div className="flex flex-wrap items-center gap-3 z-10 shrink-0">
+          <button
+            onClick={() => setIsCreateUserOpen(true)}
+            className="w-full sm:w-auto px-4 py-2.5 text-xs sm:text-sm font-bold rounded-xl bg-red-600 hover:bg-red-500 text-white transition-all flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-red-600/20 active:scale-95"
+          >
+            <UserPlus className="w-4 h-4" />
+            <span>Add New Employee</span>
+          </button>
+
           <button
             onClick={handleExportCSV}
             disabled={exporting}
-            className="w-full sm:w-auto px-4 py-2.5 text-xs sm:text-sm font-bold rounded-xl bg-red-600 hover:bg-red-500 text-white transition-all flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-red-600/20 active:scale-95"
+            className="w-full sm:w-auto px-4 py-2.5 text-xs sm:text-sm font-bold rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white border border-slate-700 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm active:scale-95"
           >
             <Download className="w-4 h-4" />
             {exporting ? "Exporting CSV..." : "Export CSV Report"}
@@ -252,686 +308,821 @@ export default function AdminDashboardClient({ currentUser }: AdminDashboardClie
         </div>
       </div>
 
-      {/* 2. Simplified Date Range Bar */}
-      <div className="p-4 rounded-2xl bg-[#121826] border border-slate-800 shadow-md flex flex-col md:flex-row md:items-center justify-between gap-3">
-        {/* Presets Segmented Buttons */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0 scrollbar-none">
-          <div className="flex items-center gap-1.5 bg-slate-900/90 p-1 rounded-xl border border-slate-800">
-            <button
-              type="button"
-              onClick={() => handleApplyPreset("today")}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
-                preset === "today"
-                  ? "bg-red-600 text-white shadow-sm"
-                  : "text-slate-400 hover:text-white"
-              }`}
-            >
-              Today
-            </button>
-            <button
-              type="button"
-              onClick={() => handleApplyPreset("7d")}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
-                preset === "7d"
-                  ? "bg-red-600 text-white shadow-sm"
-                  : "text-slate-400 hover:text-white"
-              }`}
-            >
-              7 Days
-            </button>
-            <button
-              type="button"
-              onClick={() => handleApplyPreset("30d")}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
-                preset === "30d"
-                  ? "bg-red-600 text-white shadow-sm"
-                  : "text-slate-400 hover:text-white"
-              }`}
-            >
-              30 Days
-            </button>
-            <button
-              type="button"
-              onClick={() => handleApplyPreset("month")}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
-                preset === "month"
-                  ? "bg-red-600 text-white shadow-sm"
-                  : "text-slate-400 hover:text-white"
-              }`}
-            >
-              This Month
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setPreset("custom");
-                setShowCustomDate(!showCustomDate);
-              }}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
-                preset === "custom"
-                  ? "bg-red-600 text-white shadow-sm"
-                  : "text-slate-400 hover:text-white"
-              }`}
-            >
-              <Calendar className="w-3.5 h-3.5" />
-              <span>Custom</span>
-            </button>
-          </div>
-        </div>
+      {/* 2. Admin Navigation Tabs */}
+      <div className="flex items-center gap-2 border-b border-slate-800 pb-2">
+        <button
+          type="button"
+          onClick={() => setActiveTab("analytics")}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+            activeTab === "analytics"
+              ? "bg-red-600 text-white shadow-lg shadow-red-600/20"
+              : "bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800"
+          }`}
+        >
+          <BarChart3 className="w-4 h-4" />
+          <span>Activity Analytics & Rankings</span>
+        </button>
 
-        {/* Date Info Summary */}
-        <div className="text-xs text-slate-400 flex items-center gap-1.5">
-          <span>Period:</span>
-          <span className="font-bold text-slate-200">
-            {startDate} to {endDate}
+        <button
+          type="button"
+          onClick={() => {
+            setActiveTab("users");
+            fetchUsersList();
+          }}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+            activeTab === "users"
+              ? "bg-red-600 text-white shadow-lg shadow-red-600/20"
+              : "bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800"
+          }`}
+        >
+          <Users className="w-4 h-4" />
+          <span>Employee Directory & Access</span>
+          <span className="ml-1 px-1.5 py-0.5 rounded-md text-[10px] bg-slate-800 text-slate-300 font-mono">
+            {usersList.length}
           </span>
-          <span className="text-[11px] px-2 py-0.5 rounded bg-slate-800 text-slate-300 font-semibold border border-slate-700">
-            {analyticsData?.dateRange?.totalDays || 1} {analyticsData?.dateRange?.totalDays === 1 ? "Day" : "Days"}
-          </span>
-        </div>
+        </button>
       </div>
 
-      {/* 2b. Expandable Custom Date Inputs */}
-      {showCustomDate && (
-        <form
-          onSubmit={handleCustomDateSubmit}
-          className="p-4 rounded-2xl bg-slate-900/90 border border-slate-700/80 shadow-lg flex flex-wrap items-center gap-3 animate-in fade-in duration-150"
-        >
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-slate-400 font-medium">From:</span>
-            <input
-              type="date"
-              value={startDate}
-              max={endDate || todayStr}
-              onChange={(e) => setStartDate(e.target.value)}
-              className="bg-[#121826] border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-slate-100 focus:outline-none focus:ring-1 focus:ring-red-500"
-            />
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-slate-400 font-medium">To:</span>
-            <input
-              type="date"
-              value={endDate}
-              min={startDate}
-              max={todayStr}
-              onChange={(e) => setEndDate(e.target.value)}
-              className="bg-[#121826] border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-slate-100 focus:outline-none focus:ring-1 focus:ring-red-500"
-            />
-          </div>
-          <button
-            type="submit"
-            className="px-4 py-1.5 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs font-bold transition-colors cursor-pointer shadow-sm"
-          >
-            Apply Range
-          </button>
-        </form>
-      )}
+      {/* ========================================================= */}
+      {/* TAB 1: ACTIVITY ANALYTICS & LEADERBOARD                   */}
+      {/* ========================================================= */}
+      {activeTab === "analytics" && (
+        <div className="space-y-6 animate-in fade-in duration-150">
+          {/* 3. Simplified Date Range Bar */}
+          <div className="p-4 rounded-2xl bg-[#121826] border border-slate-800 shadow-md flex flex-col md:flex-row md:items-center justify-between gap-3">
+            {/* Presets Segmented Buttons */}
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0 scrollbar-none">
+              <div className="flex items-center gap-1.5 bg-slate-900/90 p-1 rounded-xl border border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => handleApplyPreset("today")}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
+                    preset === "today"
+                      ? "bg-red-600 text-white shadow-sm"
+                      : "text-slate-400 hover:text-white"
+                  }`}
+                >
+                  Today
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleApplyPreset("7d")}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
+                    preset === "7d"
+                      ? "bg-red-600 text-white shadow-sm"
+                      : "text-slate-400 hover:text-white"
+                  }`}
+                >
+                  7 Days
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleApplyPreset("30d")}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
+                    preset === "30d"
+                      ? "bg-red-600 text-white shadow-sm"
+                      : "text-slate-400 hover:text-white"
+                  }`}
+                >
+                  30 Days
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleApplyPreset("month")}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
+                    preset === "month"
+                      ? "bg-red-600 text-white shadow-sm"
+                      : "text-slate-400 hover:text-white"
+                  }`}
+                >
+                  This Month
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPreset("custom");
+                    setShowCustomDate(!showCustomDate);
+                  }}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
+                    preset === "custom"
+                      ? "bg-red-600 text-white shadow-sm"
+                      : "text-slate-400 hover:text-white"
+                  }`}
+                >
+                  Custom
+                </button>
+              </div>
+            </div>
 
-      {/* 3. 4 Clean Corporate KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* KPI 1: Total Steps */}
-        <div className="p-5 rounded-2xl bg-[#121826] border border-slate-800 shadow-md flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-              Total Steps ({analyticsData?.dateRange?.totalDays || 1}d)
-            </span>
-            <div className="p-2 rounded-xl bg-red-500/10 text-red-500">
-              <Footprints className="w-4 h-4" />
+            {/* Date Range Label & Custom Input Trigger */}
+            <div className="flex items-center gap-2 text-xs text-slate-400">
+              <Calendar className="w-4 h-4 text-red-400" />
+              <span>
+                Active Range:{" "}
+                <strong className="text-slate-200">
+                  {startDate} &rarr; {endDate}
+                </strong>
+              </span>
             </div>
           </div>
-          <div className="mt-2">
-            <p className="text-2xl sm:text-3xl font-black text-white">
-              {kpi.range.totalSteps.toLocaleString("en-US")}
-            </p>
-            <p className="text-xs text-slate-400 mt-1">
-              {kpi.range.totalDistanceKm} km • {kpi.range.totalCalories.toLocaleString("en-US")} kcal
-            </p>
-          </div>
-        </div>
 
-        {/* KPI 2: Today's Steps */}
-        <div className="p-5 rounded-2xl bg-[#121826] border border-slate-800 shadow-md flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-              Today's Steps
-            </span>
-            <div className="p-2 rounded-xl bg-red-500/10 text-red-500">
-              <TrendingUp className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-2">
-            <p className="text-2xl sm:text-3xl font-black text-white">
-              {kpi.today.totalSteps.toLocaleString("en-US")}
-            </p>
-            <div className="flex items-center gap-1.5 text-xs mt-1">
-              {stepsDelta >= 0 ? (
-                <span className="text-emerald-400 font-bold flex items-center">
-                  <ArrowUpRight className="w-3.5 h-3.5" /> +{stepsDelta}%
+          {/* Custom Date Picker Drawer */}
+          {showCustomDate && (
+            <form
+              onSubmit={handleCustomDateSubmit}
+              className="p-4 rounded-2xl bg-slate-900/90 border border-slate-700/80 flex flex-wrap items-center gap-3 animate-in fade-in duration-150"
+            >
+              <div className="flex items-center gap-2">
+                <label className="text-xs text-slate-400 font-medium">From:</label>
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-red-500"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <label className="text-xs text-slate-400 font-medium">To:</label>
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className="bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-red-500"
+                />
+              </div>
+              <button
+                type="submit"
+                className="px-3.5 py-1.5 rounded-lg bg-red-600 hover:bg-red-500 text-white text-xs font-bold transition-colors cursor-pointer"
+              >
+                Apply Range
+              </button>
+            </form>
+          )}
+
+          {/* 4. Overview KPI Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Total Filtered Steps */}
+            <div className="p-5 rounded-2xl bg-[#121826] border border-slate-800 shadow-md flex flex-col justify-between">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                  Total Range Steps
                 </span>
-              ) : (
-                <span className="text-rose-400 font-bold flex items-center">
-                  <ArrowDownRight className="w-3.5 h-3.5" /> {stepsDelta}%
-                </span>
-              )}
-              <span className="text-slate-400">vs yesterday ({kpi.yesterday.totalSteps.toLocaleString("en-US")})</span>
-            </div>
-          </div>
-        </div>
-
-        {/* KPI 3: Today's Participation */}
-        <div className="p-5 rounded-2xl bg-[#121826] border border-slate-800 shadow-md flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-              Today's Participation
-            </span>
-            <div className="p-2 rounded-xl bg-slate-800 text-slate-300">
-              <Users className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-2">
-            <p className="text-2xl sm:text-3xl font-black text-white">
-              {kpi.today.activeUsers}{" "}
-              <span className="text-xs font-normal text-slate-400">/ {kpi.range.totalUsers} users</span>
-            </p>
-            <p className="text-xs text-slate-400 mt-1">
-              <span className="text-slate-200 font-bold">{kpi.today.activePercentage}%</span> active today
-            </p>
-          </div>
-        </div>
-
-        {/* KPI 4: Top Walker Today */}
-        <div className="p-5 rounded-2xl bg-[#121826] border border-slate-800 shadow-md flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-              Top Walker Today
-            </span>
-            <div className="p-2 rounded-xl bg-amber-500/10 text-amber-400">
-              <Award className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-2">
-            {kpi.today.topWalker ? (
-              <div className="flex items-center gap-2.5">
-                {kpi.today.topWalker.avatarUrl ? (
-                  <img
-                    src={kpi.today.topWalker.avatarUrl}
-                    alt={kpi.today.topWalker.name}
-                    className="w-9 h-9 rounded-full object-cover border-2 border-red-500/40 shrink-0"
-                  />
-                ) : (
-                  <div className="w-9 h-9 rounded-full bg-slate-800 flex items-center justify-center font-bold text-xs text-slate-200 shrink-0">
-                    {kpi.today.topWalker.name.charAt(0)}
-                  </div>
-                )}
-                <div className="min-w-0">
-                  <p className="text-sm font-bold text-white truncate">
-                    {kpi.today.topWalker.name}
-                  </p>
-                  <p className="text-xs font-extrabold text-red-400">
-                    {kpi.today.topWalker.steps.toLocaleString("en-US")} steps
-                  </p>
+                <div className="w-8 h-8 rounded-lg bg-red-500/10 text-red-400 flex items-center justify-center">
+                  <Footprints className="w-4 h-4" />
                 </div>
               </div>
-            ) : (
-              <p className="text-xs text-slate-500 mt-2">No activity logged today</p>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* 4. Chart: Daily Step Trend (Full Width) */}
-      <div className="rounded-3xl bg-[#121826] border border-slate-800 p-6 shadow-md flex flex-col justify-between">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 mb-4 border-b border-slate-800">
-          <div>
-            <h3 className="font-bold text-base text-white flex items-center gap-2">
-              <Footprints className="w-4 h-4 text-red-500" />
-              Daily Step Trends
-            </h3>
-            <p className="text-xs text-slate-400">
-              Cumulative employee step activity across the selected period
-            </p>
-          </div>
-          <span className="text-xs font-bold text-slate-200 bg-slate-800 px-3 py-1 rounded-xl border border-slate-700 self-start sm:self-auto">
-            Average: {kpi.range.avgStepsPerDay.toLocaleString("en-US")} steps/day
-          </span>
-        </div>
-
-        <div className="h-64 sm:h-72 w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={timeSeries} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1E293B" vertical={false} />
-              <XAxis
-                dataKey="displayDate"
-                stroke="#64748B"
-                fontSize={11}
-                tickLine={false}
-                axisLine={false}
-              />
-              <YAxis
-                stroke="#64748B"
-                fontSize={11}
-                tickLine={false}
-                axisLine={false}
-                tickFormatter={(val) => (val >= 1000 ? `${(val / 1000).toFixed(0)}k` : val)}
-              />
-              <Tooltip
-                cursor={false}
-                contentStyle={{
-                  backgroundColor: "#0F172A",
-                  borderColor: "#334155",
-                  borderRadius: "12px",
-                  color: "#F8FAFC",
-                  fontSize: "12px",
-                  boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.5)",
-                }}
-                formatter={(val: any) => [
-                  `${Number(val).toLocaleString("id-ID")} langkah`,
-                  "Total Langkah",
-                ]}
-              />
-              <Bar
-                dataKey="totalSteps"
-                name="Total Langkah"
-                fill="#DC2626"
-                activeBar={{ fill: "#EF4444" }}
-                radius={[6, 6, 0, 0]}
-              />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
-
-      {/* 5. Complete Employee Leaderboard Container (Shows Podium + Rank 4+ List; Fullscreen on Maximize) */}
-      <div
-        className={
-          isLeaderboardMaximized
-            ? "fixed inset-0 z-50 p-4 sm:p-8 bg-[#0B0F17]/98 backdrop-blur-2xl overflow-y-auto flex flex-col space-y-6 animate-in fade-in zoom-in-95 duration-200"
-            : "rounded-3xl bg-[#121826] border border-slate-800 p-6 sm:p-8 shadow-xl space-y-6"
-        }
-      >
-        {/* Section Header with Controls */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-800">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-red-600/10 text-red-500 border border-red-500/20 flex items-center justify-center shrink-0">
-              <Trophy className="w-5 h-5" />
+              <div className="mt-3">
+                <p className="text-2xl font-black text-white">
+                  {kpi.range.totalSteps.toLocaleString("en-US")}
+                </p>
+                <p className="text-[11px] text-slate-400 mt-1">
+                  Across all active employees
+                </p>
+              </div>
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="font-black text-lg sm:text-xl text-white tracking-tight">
-                  Leaderboard & Rankings
-                </h3>
-                {isLeaderboardMaximized && (
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-500/15 text-red-400 border border-red-500/30 uppercase">
-                    Maximized View
+
+            {/* Daily Average */}
+            <div className="p-5 rounded-2xl bg-[#121826] border border-slate-800 shadow-md flex flex-col justify-between">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                  Daily Step Avg
+                </span>
+                <div className="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center">
+                  <TrendingUp className="w-4 h-4" />
+                </div>
+              </div>
+              <div className="mt-3">
+                <p className="text-2xl font-black text-white">
+                  {kpi.range.avgStepsPerDay.toLocaleString("en-US")}
+                </p>
+                <p className="text-[11px] text-slate-400 mt-1">
+                  Steps per day average
+                </p>
+              </div>
+            </div>
+
+            {/* Total Distance */}
+            <div className="p-5 rounded-2xl bg-[#121826] border border-slate-800 shadow-md flex flex-col justify-between">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                  Total Distance
+                </span>
+                <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
+                  <Award className="w-4 h-4" />
+                </div>
+              </div>
+              <div className="mt-3">
+                <p className="text-2xl font-black text-white">
+                  {kpi.range.totalDistanceKm} <span className="text-sm font-semibold text-slate-400">km</span>
+                </p>
+                <p className="text-[11px] text-slate-400 mt-1">
+                  ~{kpi.range.totalCalories.toLocaleString("en-US")} kcal burned
+                </p>
+              </div>
+            </div>
+
+            {/* Active Walkers */}
+            <div className="p-5 rounded-2xl bg-[#121826] border border-slate-800 shadow-md flex flex-col justify-between">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                  Active Walkers
+                </span>
+                <div className="w-8 h-8 rounded-lg bg-teal-500/10 text-teal-400 flex items-center justify-center">
+                  <Users className="w-4 h-4" />
+                </div>
+              </div>
+              <div className="mt-3">
+                <p className="text-2xl font-black text-white">
+                  {kpi.range.uniqueWalkersCount} / {kpi.range.totalUsers}
+                </p>
+                <p className="text-[11px] text-slate-400 mt-1">
+                  Logged activity in range
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* 5. Trend Chart */}
+          <div className="p-6 rounded-3xl bg-[#121826] border border-slate-800 shadow-xl">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-base font-bold text-white tracking-tight">
+                  Daily Step Trends
+                </h2>
+                <p className="text-xs text-slate-400">
+                  Total collective steps logged across the company per day
+                </p>
+              </div>
+              <span className="text-xs px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-800 text-slate-300 font-mono">
+                {timeSeries.length} Days Recorded
+              </span>
+            </div>
+
+            <div className="h-64 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={timeSeries} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#1E293B" vertical={false} />
+                  <XAxis
+                    dataKey="dateFormatted"
+                    stroke="#64748B"
+                    fontSize={11}
+                    tickLine={false}
+                    axisLine={false}
+                  />
+                  <YAxis
+                    stroke="#64748B"
+                    fontSize={11}
+                    tickLine={false}
+                    axisLine={false}
+                    tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`}
+                  />
+                  <Tooltip
+                    cursor={{ fill: "rgba(220, 38, 38, 0.08)" }}
+                    content={({ active, payload, label }) => {
+                      if (active && payload && payload.length) {
+                        return (
+                          <div className="p-3 rounded-xl bg-slate-900/95 border border-slate-700 shadow-xl text-xs text-slate-200">
+                            <p className="font-bold text-white mb-1">{label}</p>
+                            <p className="text-red-400 font-medium">
+                              Total Steps: {Number(payload[0].value).toLocaleString("en-US")}
+                            </p>
+                          </div>
+                        );
+                      }
+                      return null;
+                    }}
+                  />
+                  <Bar dataKey="steps" fill="#DC2626" radius={[6, 6, 0, 0]} maxBarSize={40} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* 6. Leaderboard & Rankings Section */}
+          <div className="p-6 sm:p-7 rounded-3xl bg-[#121826] border border-slate-800 shadow-xl space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-lg font-bold text-white tracking-tight">
+                    Leaderboard & Rankings
+                  </h2>
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 font-medium">
+                    {rawLeaderboard.length} Participants
                   </span>
+                </div>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Ranked by 70% Counted Steps + 30% Target Consistency
+                </p>
+              </div>
+
+              {/* Search and Maximize */}
+              <div className="flex items-center gap-3">
+                <div className="relative flex-1 sm:w-64">
+                  <Search className="w-4 h-4 text-slate-500 absolute left-3 top-2.5" />
+                  <input
+                    type="text"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    placeholder="Search participant..."
+                    className="w-full bg-slate-900 border border-slate-700/80 rounded-xl pl-9 pr-3 py-1.5 text-xs text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-red-500"
+                  />
+                </div>
+
+                <button
+                  onClick={() => setIsLeaderboardMaximized(true)}
+                  className="p-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700/80 text-slate-300 hover:text-white transition-all cursor-pointer shrink-0 shadow-sm"
+                  title="Maximize Leaderboard (Fullscreen View)"
+                >
+                  <Maximize2 className="w-4 h-4 text-slate-300" />
+                </button>
+              </div>
+            </div>
+
+            {/* Podium (Top 3) */}
+            {hasPodium && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
+                {/* 2nd Place */}
+                {top2 && (
+                  <div
+                    onClick={() => openUserDetail(top2.userId, top2)}
+                    className="p-5 rounded-2xl bg-slate-900/80 border border-slate-700/60 hover:border-slate-500 transition-all cursor-pointer flex flex-col justify-between group shadow-md order-2 md:order-1"
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="w-7 h-7 rounded-lg bg-slate-800 text-slate-300 border border-slate-600 flex items-center justify-center text-xs font-black">
+                          #2
+                        </span>
+                        <Medal className="w-4 h-4 text-slate-300" />
+                      </div>
+                      <span className="text-[10px] text-slate-400 font-semibold px-2 py-0.5 rounded bg-slate-800">
+                        Silver
+                      </span>
+                    </div>
+                    <div className="my-4 text-center">
+                      <div className="w-14 h-14 mx-auto rounded-full bg-slate-800 border-2 border-slate-400 flex items-center justify-center font-bold text-lg text-white mb-2 overflow-hidden shadow-sm">
+                        {top2.avatarUrl ? (
+                          <img src={top2.avatarUrl} alt={top2.name} className="w-full h-full object-cover" />
+                        ) : (
+                          top2.name.charAt(0)
+                        )}
+                      </div>
+                      <h3 className="text-sm font-bold text-white group-hover:text-red-400 transition-colors truncate">
+                        {top2.name}
+                      </h3>
+                      <p className="text-[11px] text-slate-400 truncate">{top2.email}</p>
+                    </div>
+                    <div className="p-2.5 rounded-xl bg-slate-950/60 border border-slate-800 text-center">
+                      <p className="text-xs text-slate-400">Final Score</p>
+                      <p className="text-xl font-black text-white">{Number(top2.finalScore).toFixed(1)}</p>
+                      <p className="text-[10px] text-slate-500 mt-0.5">
+                        {Number(top2.countedSteps).toLocaleString("en-US")} counted steps • {top2.targetAchievedDays} goal days
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* 1st Place (Gold Champion) */}
+                {top1 && (
+                  <div
+                    onClick={() => {
+                      triggerPodiumConfetti();
+                      openUserDetail(top1.userId, top1);
+                    }}
+                    className="p-6 rounded-2xl bg-gradient-to-b from-amber-950/20 to-slate-900 border border-amber-500/40 hover:border-amber-400 transition-all cursor-pointer flex flex-col justify-between group shadow-xl relative order-1 md:order-2"
+                  >
+                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full bg-amber-500 text-slate-950 text-[10px] font-black tracking-wider uppercase shadow-md flex items-center gap-1">
+                      <Trophy className="w-3 h-3" /> Champion
+                    </div>
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="w-7 h-7 rounded-lg bg-amber-500 text-slate-950 flex items-center justify-center text-xs font-black shadow-sm">
+                          #1
+                        </span>
+                        <Trophy className="w-4 h-4 text-amber-400" />
+                      </div>
+                      <span className="text-[10px] text-amber-300 font-bold px-2 py-0.5 rounded bg-amber-500/20 border border-amber-500/30">
+                        Gold
+                      </span>
+                    </div>
+                    <div className="my-4 text-center">
+                      <div className="w-16 h-16 mx-auto rounded-full bg-slate-800 border-2 border-amber-400 flex items-center justify-center font-bold text-xl text-white mb-2 overflow-hidden shadow-lg shadow-amber-500/20">
+                        {top1.avatarUrl ? (
+                          <img src={top1.avatarUrl} alt={top1.name} className="w-full h-full object-cover" />
+                        ) : (
+                          top1.name.charAt(0)
+                        )}
+                      </div>
+                      <h3 className="text-base font-black text-white group-hover:text-amber-300 transition-colors truncate">
+                        {top1.name}
+                      </h3>
+                      <p className="text-[11px] text-slate-400 truncate">{top1.email}</p>
+                    </div>
+                    <div className="p-3 rounded-xl bg-slate-950/80 border border-amber-500/30 text-center">
+                      <p className="text-xs text-amber-300/80 font-medium">Final Score</p>
+                      <p className="text-2xl font-black text-amber-400">{Number(top1.finalScore).toFixed(1)}</p>
+                      <p className="text-[10px] text-slate-400 mt-0.5">
+                        {Number(top1.countedSteps).toLocaleString("en-US")} counted steps • {top1.targetAchievedDays} goal days
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* 3rd Place */}
+                {top3 && (
+                  <div
+                    onClick={() => openUserDetail(top3.userId, top3)}
+                    className="p-5 rounded-2xl bg-slate-900/80 border border-amber-900/40 hover:border-amber-700/60 transition-all cursor-pointer flex flex-col justify-between group shadow-md order-3"
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="w-7 h-7 rounded-lg bg-amber-950 text-amber-400 border border-amber-800/60 flex items-center justify-center text-xs font-black">
+                          #3
+                        </span>
+                        <Medal className="w-4 h-4 text-amber-500" />
+                      </div>
+                      <span className="text-[10px] text-amber-400 font-semibold px-2 py-0.5 rounded bg-amber-950/40">
+                        Bronze
+                      </span>
+                    </div>
+                    <div className="my-4 text-center">
+                      <div className="w-14 h-14 mx-auto rounded-full bg-slate-800 border-2 border-amber-700/80 flex items-center justify-center font-bold text-lg text-white mb-2 overflow-hidden shadow-sm">
+                        {top3.avatarUrl ? (
+                          <img src={top3.avatarUrl} alt={top3.name} className="w-full h-full object-cover" />
+                        ) : (
+                          top3.name.charAt(0)
+                        )}
+                      </div>
+                      <h3 className="text-sm font-bold text-white group-hover:text-red-400 transition-colors truncate">
+                        {top3.name}
+                      </h3>
+                      <p className="text-[11px] text-slate-400 truncate">{top3.email}</p>
+                    </div>
+                    <div className="p-2.5 rounded-xl bg-slate-950/60 border border-slate-800 text-center">
+                      <p className="text-xs text-slate-400">Final Score</p>
+                      <p className="text-xl font-black text-white">{Number(top3.finalScore).toFixed(1)}</p>
+                      <p className="text-[10px] text-slate-500 mt-0.5">
+                        {Number(top3.countedSteps).toLocaleString("en-US")} counted steps • {top3.targetAchievedDays} goal days
+                      </p>
+                    </div>
+                  </div>
                 )}
               </div>
-              <p className="text-xs text-slate-400">
-                Formula: (Counted Steps / Max × 70) + (Goal Days / Total Days × 30)
+            )}
+
+            {/* Leaderboard Table (Ranks 4+ or all) */}
+            <div className="overflow-x-auto rounded-2xl border border-slate-800">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className="bg-slate-900/90 text-slate-400 border-b border-slate-800">
+                    <th className="px-4 py-3 font-bold uppercase tracking-wider w-14">Rank</th>
+                    <th className="px-4 py-3 font-bold uppercase tracking-wider">Participant</th>
+                    <th className="px-4 py-3 font-bold uppercase tracking-wider">Final Score</th>
+                    <th className="px-4 py-3 font-bold uppercase tracking-wider">Counted Steps (70%)</th>
+                    <th className="px-4 py-3 font-bold uppercase tracking-wider">Goal Consistency (30%)</th>
+                    <th className="px-4 py-3 font-bold uppercase tracking-wider">Excess Steps</th>
+                    <th className="px-4 py-3 font-bold uppercase tracking-wider text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800/60">
+                  {tableDisplayList.map((user: any) => (
+                    <tr
+                      key={user.userId}
+                      onClick={() => openUserDetail(user.userId, user)}
+                      className="hover:bg-slate-800/40 transition-colors cursor-pointer"
+                    >
+                      <td className="px-4 py-3.5 font-bold text-slate-300">
+                        #{user.rank}
+                      </td>
+                      <td className="px-4 py-3.5">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-8 h-8 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center font-bold text-xs text-slate-200 shrink-0">
+                            {user.name.charAt(0)}
+                          </div>
+                          <div>
+                            <p className="font-bold text-slate-100">{user.name}</p>
+                            <p className="text-[10px] text-slate-400">{user.email}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3.5">
+                        <span className="font-black text-sm text-red-400">
+                          {Number(user.finalScore).toFixed(1)}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3.5">
+                        <p className="font-semibold text-slate-200">
+                          {Number(user.countedSteps).toLocaleString("en-US")} steps
+                        </p>
+                        <p className="text-[10px] text-slate-400">
+                          {Number(user.stepScore).toFixed(1)} / 70 pts
+                        </p>
+                      </td>
+                      <td className="px-4 py-3.5">
+                        <p className="font-semibold text-emerald-400">
+                          {user.targetAchievedDays} days ({Number(user.consistencyRate).toFixed(0)}%)
+                        </p>
+                        <p className="text-[10px] text-slate-400">
+                          {Number(user.consistencyScore).toFixed(1)} / 30 pts
+                        </p>
+                      </td>
+                      <td className="px-4 py-3.5">
+                        {user.totalExcessSteps > 0 ? (
+                          <span className="text-xs font-semibold text-slate-400 bg-slate-800/60 px-2 py-0.5 rounded border border-slate-700">
+                            +{Number(user.totalExcessSteps).toLocaleString("en-US")}
+                          </span>
+                        ) : (
+                          <span className="text-slate-600 text-xs">-</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3.5 text-right" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          type="button"
+                          onClick={() => openUserDetail(user.userId, user)}
+                          className="px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 transition-colors inline-flex items-center gap-1 cursor-pointer"
+                        >
+                          <UserCog className="w-3 h-3 text-slate-400" />
+                          <span>Details</span>
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* TAB 2: EMPLOYEE DIRECTORY & PRIVILEGE MANAGEMENT         */}
+      {/* ========================================================= */}
+      {activeTab === "users" && (
+        <div className="space-y-6 animate-in fade-in duration-150">
+          {/* Employee Directory Summary KPIs */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="p-5 rounded-2xl bg-[#121826] border border-slate-800 shadow-md">
+              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                Total Employees
+              </span>
+              <p className="text-2xl font-black text-white mt-2">
+                {usersList.length}
+              </p>
+              <p className="text-[11px] text-slate-400 mt-1">
+                Registered in WalkRank system
+              </p>
+            </div>
+
+            <div className="p-5 rounded-2xl bg-[#121826] border border-slate-800 shadow-md">
+              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                Regular Users
+              </span>
+              <p className="text-2xl font-black text-teal-400 mt-2">
+                {totalRegularUsersCount}
+              </p>
+              <p className="text-[11px] text-slate-400 mt-1">
+                Standard participant privileges
+              </p>
+            </div>
+
+            <div className="p-5 rounded-2xl bg-[#121826] border border-slate-800 shadow-md">
+              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                Super Admins
+              </span>
+              <p className="text-2xl font-black text-red-400 mt-2">
+                {totalAdminsCount}
+              </p>
+              <p className="text-[11px] text-slate-400 mt-1">
+                Full executive & management access
+              </p>
+            </div>
+
+            <div className="p-5 rounded-2xl bg-[#121826] border border-slate-800 shadow-md">
+              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                Activity Records
+              </span>
+              <p className="text-2xl font-black text-amber-400 mt-2">
+                {totalLogsAcrossAllUsers}
+              </p>
+              <p className="text-[11px] text-slate-400 mt-1">
+                Total daily step entries logged
               </p>
             </div>
           </div>
 
-          {/* Right Action Tools: Confetti, Search, Maximize */}
-          <div className="flex flex-wrap items-center gap-2.5">
-            <button
-              onClick={triggerPodiumConfetti}
-              type="button"
-              className="text-xs font-semibold px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
-              title="Celebrate Top Performers"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-              <span>Celebrate</span>
-            </button>
+          {/* Directory Toolbar */}
+          <div className="p-5 rounded-2xl bg-[#121826] border border-slate-800 shadow-md flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3 flex-1">
+              {/* Search Bar */}
+              <div className="relative flex-1 max-w-md">
+                <Search className="w-4 h-4 text-slate-500 absolute left-3.5 top-3" />
+                <input
+                  type="text"
+                  value={userSearchTerm}
+                  onChange={(e) => setUserSearchTerm(e.target.value)}
+                  placeholder="Filter by employee name or email..."
+                  className="w-full bg-slate-900 border border-slate-700/80 rounded-xl pl-10 pr-3.5 py-2 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-red-500"
+                />
+              </div>
 
-            <div className="relative">
-              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search by name or email..."
-                className="bg-slate-900 border border-slate-700/80 rounded-xl pl-8 pr-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-red-500 w-44 sm:w-56"
-              />
+              {/* Role Filter */}
+              <div className="flex items-center gap-1.5">
+                <Filter className="w-4 h-4 text-slate-400" />
+                <select
+                  value={userRoleFilter}
+                  onChange={(e) => setUserRoleFilter(e.target.value as any)}
+                  className="bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-red-500 cursor-pointer"
+                >
+                  <option value="ALL">All Roles ({usersList.length})</option>
+                  <option value="USER">Regular Users ({totalRegularUsersCount})</option>
+                  <option value="SUPER_ADMIN">Super Admins ({totalAdminsCount})</option>
+                </select>
+              </div>
             </div>
 
             <button
-              type="button"
-              onClick={() => setIsLeaderboardMaximized(!isLeaderboardMaximized)}
-              className="px-3.5 py-1.5 text-xs font-bold rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 flex items-center gap-1.5 transition-colors cursor-pointer shadow-sm"
-              title={isLeaderboardMaximized ? "Minimize Screen (ESC)" : "Maximize Screen"}
+              onClick={() => setIsCreateUserOpen(true)}
+              className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-red-600 hover:bg-red-500 shadow-md shadow-red-600/20 transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-95 shrink-0"
             >
-              {isLeaderboardMaximized ? (
-                <>
-                  <Minimize2 className="w-3.5 h-3.5 text-red-400" />
-                  <span>Minimize (ESC)</span>
-                </>
-              ) : (
-                <>
-                  <Maximize2 className="w-3.5 h-3.5 text-slate-400" />
-                  <span>Maximize</span>
-                </>
-              )}
+              <UserPlus className="w-4 h-4" />
+              <span>+ Create Employee</span>
             </button>
           </div>
-        </div>
 
-        {/* Top 3 Podium (Always visible at top when not searching) */}
-        {hasPodium && (
-          <div className="relative pt-2 pb-4">
-            <div className="grid grid-cols-3 gap-3 sm:gap-6 items-end max-w-4xl mx-auto pt-6 pb-2">
-              {/* Rank 2 (Silver - Left) */}
-              {top2 && (
-                <div
-                  onClick={() => openUserDetail(top2.userId, top2)}
-                  className="flex flex-col items-center group cursor-pointer"
-                >
-                  <div className="relative mb-3 flex flex-col items-center">
-                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700 text-[11px] font-semibold mb-2 shadow-sm">
-                      <Medal className="w-3.5 h-3.5 text-slate-400" />
-                      2nd Place
-                    </span>
-                    {top2.avatarUrl ? (
-                      <img
-                        src={top2.avatarUrl}
-                        alt={top2.name}
-                        className="w-16 h-16 sm:w-20 sm:h-20 rounded-full object-cover border-2 border-slate-400 shadow-md group-hover:scale-105 transition-transform"
-                      />
-                    ) : (
-                      <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-slate-800 flex items-center justify-center font-bold text-lg text-slate-300 border-2 border-slate-400 group-hover:scale-105 transition-transform">
-                        {top2.name.charAt(0)}
-                      </div>
-                    )}
-                  </div>
-
-                  <p className="text-xs sm:text-sm font-bold text-white text-center truncate max-w-[130px] group-hover:text-red-400 transition-colors">
-                    {top2.name}
-                  </p>
-
-                  {/* Podium Base Card */}
-                  <div className="mt-3 w-full p-4 rounded-2xl bg-slate-900/80 border border-slate-800 hover:border-slate-700 text-center transition-all shadow-sm">
-                    <div className="text-xl sm:text-2xl font-black text-white">
-                      {Number(top2.finalScore ?? top2.score).toFixed(1)}
-                      <span className="text-xs font-normal text-slate-400 ml-1">pts</span>
-                    </div>
-                    <div className="text-xs text-slate-300 font-semibold mt-1">
-                      {(top2.totalCountedSteps || top2.totalSteps).toLocaleString("en-US")} steps
-                    </div>
-                    <p className="text-[11px] text-slate-400 mt-1">
-                      Steps: {Number(top2.stepScore ?? 0).toFixed(1)}/70 • Goal: {Number(top2.consistencyScore ?? 0).toFixed(1)}/30
-                    </p>
-                    {top2.totalExcessSteps > 0 && (
-                      <p className="text-[10px] text-slate-500 mt-1 font-medium">
-                        +{top2.totalExcessSteps.toLocaleString("en-US")} excess
-                      </p>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Rank 1 (Gold / Elevated - Center) */}
-              {top1 && (
-                <div
-                  onClick={() => {
-                    triggerPodiumConfetti();
-                    openUserDetail(top1.userId, top1);
-                  }}
-                  className="flex flex-col items-center group cursor-pointer -mt-4 sm:-mt-6"
-                >
-                  <div className="relative mb-3 flex flex-col items-center">
-                    <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30 text-xs font-bold mb-2 shadow-sm">
-                      <Trophy className="w-3.5 h-3.5 text-amber-400" />
-                      1st Place
-                    </span>
-                    {top1.avatarUrl ? (
-                      <img
-                        src={top1.avatarUrl}
-                        alt={top1.name}
-                        className="w-20 h-20 sm:w-24 sm:h-24 rounded-full object-cover border-2 border-amber-400 shadow-xl group-hover:scale-105 transition-transform"
-                      />
-                    ) : (
-                      <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-slate-800 flex items-center justify-center text-xl sm:text-2xl font-black text-amber-300 border-2 border-amber-400 group-hover:scale-105 transition-transform">
-                        {top1.name.charAt(0)}
-                      </div>
-                    )}
-                  </div>
-
-                  <p className="text-sm sm:text-base font-black text-white text-center truncate max-w-[150px] group-hover:text-red-400 transition-colors">
-                    {top1.name}
-                  </p>
-
-                  {/* Podium Base Card */}
-                  <div className="mt-3 w-full p-5 rounded-2xl bg-gradient-to-b from-[#1A2234] to-[#111827] border border-amber-500/30 hover:border-amber-500/50 text-center transition-all shadow-md">
-                    <div className="text-2xl sm:text-3xl font-black text-amber-300">
-                      {Number(top1.finalScore ?? top1.score).toFixed(1)}
-                      <span className="text-xs font-normal text-amber-400/80 ml-1">pts</span>
-                    </div>
-                    <div className="text-xs text-amber-200 font-bold mt-1">
-                      {(top1.totalCountedSteps || top1.totalSteps).toLocaleString("en-US")} steps
-                    </div>
-                    <p className="text-[11px] text-amber-300/80 mt-1">
-                      Steps: {Number(top1.stepScore ?? 0).toFixed(1)}/70 • Goal: {Number(top1.consistencyScore ?? 0).toFixed(1)}/30
-                    </p>
-                    {top1.totalExcessSteps > 0 && (
-                      <p className="text-[10px] text-amber-200/60 mt-1 font-medium">
-                        +{top1.totalExcessSteps.toLocaleString("en-US")} excess
-                      </p>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Rank 3 (Bronze - Right) */}
-              {top3 && (
-                <div
-                  onClick={() => openUserDetail(top3.userId, top3)}
-                  className="flex flex-col items-center group cursor-pointer"
-                >
-                  <div className="relative mb-3 flex flex-col items-center">
-                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-950/40 text-amber-500 border border-amber-800/50 text-[11px] font-semibold mb-2 shadow-sm">
-                      <Medal className="w-3.5 h-3.5 text-amber-600" />
-                      3rd Place
-                    </span>
-                    {top3.avatarUrl ? (
-                      <img
-                        src={top3.avatarUrl}
-                        alt={top3.name}
-                        className="w-14 h-14 sm:w-20 sm:h-20 rounded-full object-cover border-2 border-amber-700/80 shadow-md group-hover:scale-105 transition-transform"
-                      />
-                    ) : (
-                      <div className="w-14 h-14 sm:w-20 sm:h-20 rounded-full bg-slate-800 flex items-center justify-center font-bold text-lg text-amber-600 border-2 border-amber-700/80 group-hover:scale-105 transition-transform">
-                        {top3.name.charAt(0)}
-                      </div>
-                    )}
-                  </div>
-
-                  <p className="text-xs sm:text-sm font-bold text-white text-center truncate max-w-[130px] group-hover:text-red-400 transition-colors">
-                    {top3.name}
-                  </p>
-
-                  {/* Podium Base Card */}
-                  <div className="mt-3 w-full p-4 rounded-2xl bg-slate-900/80 border border-slate-800 hover:border-slate-700 text-center transition-all shadow-sm">
-                    <div className="text-xl sm:text-2xl font-black text-white">
-                      {Number(top3.finalScore ?? top3.score).toFixed(1)}
-                      <span className="text-xs font-normal text-slate-400 ml-1">pts</span>
-                    </div>
-                    <div className="text-xs text-slate-300 font-semibold mt-1">
-                      {(top3.totalCountedSteps || top3.totalSteps).toLocaleString("en-US")} steps
-                    </div>
-                    <p className="text-[11px] text-slate-400 mt-1">
-                      Steps: {Number(top3.stepScore ?? 0).toFixed(1)}/70 • Goal: {Number(top3.consistencyScore ?? 0).toFixed(1)}/30
-                    </p>
-                    {top3.totalExcessSteps > 0 && (
-                      <p className="text-[10px] text-slate-500 mt-1 font-medium">
-                        +{top3.totalExcessSteps.toLocaleString("en-US")} excess
-                      </p>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Rank 4 Onwards List (or Search Results) */}
-        <div className="space-y-3">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2">
-            <div className="flex items-center gap-2">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-300">
-                {searchTerm
-                  ? `Search Results ("${searchTerm}")`
-                  : hasPodium && !showAllInTable
-                  ? "Rankings #4 and Below"
-                  : "All Participant Rankings"}
-              </h4>
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 font-medium border border-slate-700">
-                {tableDisplayList.length} Participants
+          {/* Employee Directory Table */}
+          <div className="p-6 rounded-3xl bg-[#121826] border border-slate-800 shadow-xl overflow-hidden">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-base font-bold text-white tracking-tight">
+                  Employee Access & Records Directory
+                </h3>
+                <p className="text-xs text-slate-400">
+                  Manage employee credentials, system roles, daily step targets, and account deletions
+                </p>
+              </div>
+              <span className="text-xs font-mono text-slate-400 bg-slate-900 px-2.5 py-1 rounded-lg border border-slate-800">
+                {filteredUsersList.length} Accounts Found
               </span>
             </div>
 
-            {hasPodium && (
-              <button
-                type="button"
-                onClick={() => setShowAllInTable(!showAllInTable)}
-                className="text-[11px] font-semibold text-slate-400 hover:text-white transition-colors cursor-pointer self-start sm:self-auto"
-              >
-                {showAllInTable
-                  ? "← Show from #4 onwards"
-                  : "Show all participants (including Top 3) →"}
-              </button>
-            )}
-          </div>
-
-          {tableDisplayList.length === 0 ? (
-            <div className="py-12 text-center text-slate-500 text-xs rounded-2xl border border-slate-800/80 bg-slate-900/20">
-              No participants match your search query.
-            </div>
-          ) : (
             <div className="overflow-x-auto rounded-2xl border border-slate-800">
-              <table className="w-full text-left text-xs text-slate-300">
-                <thead className="bg-slate-900/90 text-[11px] uppercase tracking-wider text-slate-400 border-b border-slate-800">
-                  <tr>
-                    <th className="px-4 py-3 text-center w-16">Rank</th>
-                    <th className="px-4 py-3">Participant</th>
-                    <th className="px-4 py-3">Final Score</th>
-                    <th className="px-4 py-3">Step Score (70%)</th>
-                    <th className="px-4 py-3">Consistency (30%)</th>
-                    <th className="px-4 py-3">Excess Steps</th>
-                    <th className="px-4 py-3 text-right">Actions</th>
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className="bg-slate-900/90 text-slate-400 border-b border-slate-800">
+                    <th className="px-4 py-3.5 font-bold uppercase tracking-wider">Employee</th>
+                    <th className="px-4 py-3.5 font-bold uppercase tracking-wider">System Role</th>
+                    <th className="px-4 py-3.5 font-bold uppercase tracking-wider">Daily Goal</th>
+                    <th className="px-4 py-3.5 font-bold uppercase tracking-wider">Activity Logs</th>
+                    <th className="px-4 py-3.5 font-bold uppercase tracking-wider">Joined Date</th>
+                    <th className="px-4 py-3.5 font-bold uppercase tracking-wider text-right">Privilege Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-800/60 bg-slate-900/20">
-                  {tableDisplayList.map((user: any) => {
-                    return (
-                      <tr
-                        key={user.userId}
-                        className="hover:bg-slate-800/40 transition-colors group cursor-pointer"
-                        onClick={() => openUserDetail(user.userId, user)}
-                      >
-                        <td className="px-4 py-3.5 text-center font-bold">
-                          {user.rank === 1 ? (
-                            <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-amber-500/20 text-amber-300 text-xs font-bold border border-amber-500/30">
-                              1
-                            </span>
-                          ) : user.rank === 2 ? (
-                            <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-slate-400/20 text-slate-300 text-xs font-bold border border-slate-500/30">
-                              2
-                            </span>
-                          ) : user.rank === 3 ? (
-                            <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-amber-800/20 text-amber-500 text-xs font-bold border border-amber-700/30">
-                              3
-                            </span>
-                          ) : (
-                            <span className="text-slate-400 font-mono text-xs font-semibold">
-                              #{user.rank}
-                            </span>
-                          )}
-                        </td>
-                        <td className="px-4 py-3.5">
-                          <div className="flex items-center gap-3">
-                            {user.avatarUrl ? (
-                              <img
-                                src={user.avatarUrl}
-                                alt={user.name}
-                                className="w-8 h-8 rounded-full object-cover border border-slate-700"
-                              />
-                            ) : (
-                              <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-xs font-bold text-slate-300">
-                                {user.name.charAt(0)}
-                              </div>
-                            )}
-                            <div>
-                              <div className="flex items-center gap-1.5">
-                                <p className="font-bold text-white group-hover:text-red-400 transition-colors">
-                                  {user.name}
-                                </p>
-                                {user.role === "SUPER_ADMIN" && (
-                                  <span className="text-[9px] px-1.5 py-0.2 rounded font-semibold bg-red-500/15 text-red-400 border border-red-500/30">
-                                    ADMIN
-                                  </span>
+                <tbody className="divide-y divide-slate-800/60">
+                  {filteredUsersList.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="px-4 py-8 text-center text-slate-500">
+                        No employees found matching &quot;{userSearchTerm}&quot;
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredUsersList.map((user: any) => {
+                      const isCurrentUser = user.id === currentUser.id;
+                      return (
+                        <tr key={user.id} className="hover:bg-slate-800/40 transition-colors">
+                          {/* Employee Info */}
+                          <td className="px-4 py-3.5">
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center font-bold text-xs text-slate-200 shrink-0">
+                                {user.avatarUrl ? (
+                                  <img
+                                    src={user.avatarUrl}
+                                    alt={user.name}
+                                    className="w-full h-full object-cover rounded-full"
+                                  />
+                                ) : (
+                                  user.name.charAt(0)
                                 )}
                               </div>
-                              <p className="text-[10px] text-slate-400">
-                                {user.email}
-                              </p>
+                              <div>
+                                <div className="flex items-center gap-1.5">
+                                  <p className="font-bold text-slate-100">{user.name}</p>
+                                  {isCurrentUser && (
+                                    <span className="px-1.5 py-0.2 text-[9px] font-bold rounded bg-red-500/20 text-red-300 border border-red-500/30">
+                                      YOU
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-[11px] text-slate-400 font-mono">{user.email}</p>
+                              </div>
                             </div>
-                          </div>
-                        </td>
-                        <td className="px-4 py-3.5">
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-800 text-slate-200 border border-slate-700">
-                            <Award className="w-3.5 h-3.5 text-amber-400" />
-                            {Number(user.finalScore ?? user.score).toFixed(1)} pts
-                          </span>
-                          <p className="text-[10px] text-slate-400 mt-0.5">
-                            {user.goalCompletionRate}% goal rate ({user.daysLogged}d active)
-                          </p>
-                        </td>
-                        <td className="px-4 py-3.5">
-                          <span className="text-sm font-bold text-white">
-                            {(user.totalCountedSteps || user.totalSteps).toLocaleString("en-US")}
-                          </span>
-                          <p className="text-[10px] text-amber-400 font-medium">
-                            {Number(user.stepScore ?? 0).toFixed(1)} / 70 pts
-                          </p>
-                        </td>
-                        <td className="px-4 py-3.5">
-                          <span className="text-sm font-bold text-slate-200">
-                            {user.goalsMetCount || 0} {user.goalsMetCount === 1 ? "day" : "days"}
-                          </span>
-                          <p className="text-[10px] text-emerald-400 font-medium">
-                            {Number(user.consistencyScore ?? 0).toFixed(1)} / 30 pts
-                          </p>
-                        </td>
-                        <td className="px-4 py-3.5">
-                          {user.totalExcessSteps > 0 ? (
-                            <span className="text-xs font-semibold text-slate-400 bg-slate-800/60 px-2 py-0.5 rounded border border-slate-700">
-                              +{user.totalExcessSteps.toLocaleString("en-US")}
+                          </td>
+
+                          {/* Role Selector */}
+                          <td className="px-4 py-3.5">
+                            <select
+                              value={user.role}
+                              disabled={isCurrentUser}
+                              onChange={(e) =>
+                                handleQuickRoleChange(user.id, e.target.value as "USER" | "SUPER_ADMIN")
+                              }
+                              className={`text-xs font-bold rounded-lg px-2.5 py-1 border transition-colors cursor-pointer ${
+                                user.role === "SUPER_ADMIN"
+                                  ? "bg-red-500/15 text-red-400 border-red-500/30"
+                                  : "bg-slate-800 text-slate-300 border-slate-700"
+                              } disabled:opacity-75 disabled:cursor-not-allowed`}
+                            >
+                              <option value="USER">USER</option>
+                              <option value="SUPER_ADMIN">SUPER_ADMIN</option>
+                            </select>
+                          </td>
+
+                          {/* Daily Goal */}
+                          <td className="px-4 py-3.5">
+                            <span className="font-semibold text-slate-200">
+                              {Number(user.dailyGoal || 8000).toLocaleString("en-US")}{" "}
+                              <span className="text-slate-400 text-[10px]">steps/day</span>
                             </span>
-                          ) : (
-                            <span className="text-slate-600 text-xs">-</span>
-                          )}
-                        </td>
-                        <td className="px-4 py-3.5 text-right" onClick={(e) => e.stopPropagation()}>
-                          <button
-                            type="button"
-                            onClick={() => openUserDetail(user.userId, user)}
-                            className="px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 transition-colors inline-flex items-center gap-1 cursor-pointer"
-                          >
-                            <UserCog className="w-3 h-3 text-slate-400" />
-                            <span>Details</span>
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
+                          </td>
+
+                          {/* Activity Logs Count */}
+                          <td className="px-4 py-3.5">
+                            <span className="px-2 py-0.5 rounded bg-slate-800 text-slate-300 font-mono">
+                              {user._count?.stepLogs || 0} days
+                            </span>
+                          </td>
+
+                          {/* Joined Date */}
+                          <td className="px-4 py-3.5 text-slate-400 font-mono text-[11px]">
+                            {user.createdAt ? new Date(user.createdAt).toLocaleDateString("en-GB") : "-"}
+                          </td>
+
+                          {/* Actions */}
+                          <td className="px-4 py-3.5 text-right">
+                            <div className="inline-flex items-center gap-1.5">
+                              {/* View Details Button */}
+                              <button
+                                type="button"
+                                onClick={() => openUserDetail(user.id, user)}
+                                className="px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 transition-colors inline-flex items-center gap-1 cursor-pointer"
+                                title="View Step Logs & Activity"
+                              >
+                                <Eye className="w-3.5 h-3.5 text-slate-400" />
+                                <span>Activity</span>
+                              </button>
+
+                              {/* Delete User Button (with Confirmation Dialog) */}
+                              <button
+                                type="button"
+                                disabled={isCurrentUser}
+                                onClick={() => setDeleteTargetUser(user)}
+                                className={`px-2.5 py-1 text-[11px] font-semibold rounded-lg border transition-colors inline-flex items-center gap-1 ${
+                                  isCurrentUser
+                                    ? "bg-slate-900 text-slate-600 border-slate-800 cursor-not-allowed"
+                                    : "bg-rose-950/30 hover:bg-rose-900/50 text-rose-300 border-rose-500/30 hover:border-rose-400 cursor-pointer"
+                                }`}
+                                title={isCurrentUser ? "Cannot delete own account" : "Delete Employee Account"}
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                                <span>Delete</span>
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
                 </tbody>
               </table>
             </div>
-          )}
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* User Detail & Role/Goal Management Modal */}
+      {/* ========================================================= */}
+      {/* MODALS                                                    */}
+      {/* ========================================================= */}
+
+      {/* 1. Create User Modal */}
+      <CreateUserModal
+        isOpen={isCreateUserOpen}
+        onClose={() => setIsCreateUserOpen(false)}
+        onUserCreated={() => {
+          fetchUsersList();
+          fetchAnalytics(startDate, endDate);
+        }}
+      />
+
+      {/* 2. Delete User Confirmation Modal */}
+      <DeleteUserConfirmModal
+        isOpen={!!deleteTargetUser}
+        onClose={() => setDeleteTargetUser(null)}
+        user={deleteTargetUser}
+        onUserDeleted={() => {
+          fetchUsersList();
+          fetchAnalytics(startDate, endDate);
+        }}
+      />
+
+      {/* 3. User Detail & Activity Modal */}
       <UserDetailModal
         isOpen={isDetailOpen}
         onClose={() => {
