@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import {
   X,
   User,
@@ -54,9 +55,14 @@ export default function ProfileEditModal({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [mounted, setMounted] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  if (!isOpen) return null;
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!isOpen || !mounted) return null;
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -121,10 +127,13 @@ export default function ProfileEditModal({
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-150">
+  const modalContent = (
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 bg-black/80 backdrop-blur-md animate-in fade-in duration-150 overflow-y-auto"
+      onClick={onClose}
+    >
       <div
-        className="w-full max-w-lg rounded-3xl bg-[#121826] border border-slate-700/80 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-150 relative text-slate-100 max-h-[90vh] flex flex-col"
+        className="w-full max-w-lg my-auto rounded-3xl bg-[#121826] border border-slate-700/80 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-150 relative text-slate-100 max-h-[90vh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -374,4 +383,6 @@ export default function ProfileEditModal({
       </div>
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 }

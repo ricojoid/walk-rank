@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import {
   ShieldCheck,
   Calendar,
-  Download,
   Footprints,
   TrendingUp,
   Users,
@@ -66,7 +65,6 @@ export default function AdminDashboardClient({ currentUser }: AdminDashboardClie
 
   const [analyticsData, setAnalyticsData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [exporting, setExporting] = useState(false);
 
   // User management state
   const [usersList, setUsersList] = useState<any[]>([]);
@@ -215,13 +213,6 @@ export default function AdminDashboardClient({ currentUser }: AdminDashboardClie
     fetchAnalytics(startDate, endDate);
   };
 
-  const handleExportCSV = () => {
-    setExporting(true);
-    const url = `/api/admin/export?startDate=${startDate}&endDate=${endDate}`;
-    window.location.href = url;
-    setTimeout(() => setExporting(false), 2000);
-  };
-
   const handleUpdateRole = async (userId: string, newRole: "USER" | "SUPER_ADMIN", dailyGoal: number) => {
     try {
       const res = await fetch("/api/admin/users", {
@@ -272,7 +263,13 @@ export default function AdminDashboardClient({ currentUser }: AdminDashboardClie
     range: { totalSteps: 0, totalDistanceKm: 0, totalCalories: 0, avgStepsPerDay: 0, uniqueWalkersCount: 0, totalUsers: 0 },
   };
 
-  const timeSeries = analyticsData?.timeSeriesData || [];
+  const rawTimeSeries = analyticsData?.timeSeriesData || [];
+  const timeSeries = rawTimeSeries.map((item: any) => ({
+    ...item,
+    steps: Number(item.steps ?? item.totalSteps ?? 0),
+    totalSteps: Number(item.totalSteps ?? item.steps ?? 0),
+    dateFormatted: item.dateFormatted || item.displayDate || item.date || "",
+  }));
   const rawLeaderboard = analyticsData?.leaderboard || [];
 
   // Filter leaderboard by search term (name or email)
@@ -312,10 +309,11 @@ export default function AdminDashboardClient({ currentUser }: AdminDashboardClie
   return (
     <div className="space-y-6 w-full">
       {/* 1. Executive Top Header with Ambient Glow */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 sm:p-7 rounded-3xl bg-[#121826] border border-slate-800 shadow-xl relative overflow-hidden group transition-all duration-300 hover:border-slate-700/80">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 sm:p-7 rounded-3xl card-premium relative overflow-hidden group animate-fadeInUp bg-noise">
         {/* Subtle Ambient Decorative Glows */}
-        <div className="absolute -top-12 -right-12 w-80 h-80 bg-red-600/10 rounded-full blur-3xl pointer-events-none animate-orb-1" />
-        <div className="absolute -bottom-12 -left-12 w-72 h-72 bg-rose-600/10 rounded-full blur-3xl pointer-events-none animate-orb-2" />
+        <div className="absolute -top-16 -right-16 w-80 h-80 bg-red-600/12 rounded-full blur-[100px] pointer-events-none animate-orb-1" />
+        <div className="absolute -bottom-16 -left-16 w-72 h-72 bg-rose-600/10 rounded-full blur-[100px] pointer-events-none animate-orb-2" />
+        <div className="absolute top-1/2 left-1/3 w-96 h-96 bg-amber-500/5 rounded-full blur-[120px] pointer-events-none" />
 
         <div className="space-y-1.5 z-10">
           <div className="flex flex-wrap items-center gap-2">
@@ -328,7 +326,7 @@ export default function AdminDashboardClient({ currentUser }: AdminDashboardClie
               • {usersList.length || kpi.range.totalUsers} Registered Employees
             </span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-black tracking-tight gradient-text">
             Employee Activity & Analytics
           </h1>
           <p className="text-xs sm:text-sm text-slate-400 max-w-2xl">
@@ -336,23 +334,14 @@ export default function AdminDashboardClient({ currentUser }: AdminDashboardClie
           </p>
         </div>
 
-        {/* Action Buttons: Add User & Export CSV */}
+        {/* Action Button: Add User */}
         <div className="flex flex-wrap items-center gap-3 z-10 shrink-0">
           <button
             onClick={() => setIsCreateUserOpen(true)}
-            className="w-full sm:w-auto px-4 py-2.5 text-xs sm:text-sm font-bold rounded-xl bg-red-600 hover:bg-red-500 text-white transition-all flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-red-600/20 active:scale-95"
+            className="w-full sm:w-auto px-4 py-2.5 text-xs sm:text-sm font-bold rounded-xl text-white transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-95 btn-primary"
           >
             <UserPlus className="w-4 h-4" />
             <span>Add New Employee</span>
-          </button>
-
-          <button
-            onClick={handleExportCSV}
-            disabled={exporting}
-            className="w-full sm:w-auto px-4 py-2.5 text-xs sm:text-sm font-bold rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white border border-slate-700 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm active:scale-95"
-          >
-            <Download className="w-4 h-4" />
-            {exporting ? "Exporting CSV..." : "Export CSV Report"}
           </button>
         </div>
       </div>
@@ -529,12 +518,12 @@ export default function AdminDashboardClient({ currentUser }: AdminDashboardClie
           {/* 4. Overview KPI Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {/* Total Filtered Steps */}
-            <div className="p-5 rounded-2xl bg-[#121826] border border-slate-800 shadow-md flex flex-col justify-between">
+            <div className="p-5 rounded-2xl card-premium card-accent-red animate-fadeInUp delay-1 group/card">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
                   Total Range Steps
                 </span>
-                <div className="w-8 h-8 rounded-lg bg-red-500/10 text-red-400 flex items-center justify-center">
+                <div className="w-8 h-8 rounded-lg bg-red-500/10 text-red-400 flex items-center justify-center group-hover/card:bg-red-500/20 transition-colors">
                   <Footprints className="w-4 h-4" />
                 </div>
               </div>
@@ -549,12 +538,12 @@ export default function AdminDashboardClient({ currentUser }: AdminDashboardClie
             </div>
 
             {/* Daily Average */}
-            <div className="p-5 rounded-2xl bg-[#121826] border border-slate-800 shadow-md flex flex-col justify-between">
+            <div className="p-5 rounded-2xl card-premium card-accent-amber animate-fadeInUp delay-2 group/card">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
                   Daily Step Avg
                 </span>
-                <div className="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center">
+                <div className="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center group-hover/card:bg-amber-500/20 transition-colors">
                   <TrendingUp className="w-4 h-4" />
                 </div>
               </div>
@@ -569,12 +558,12 @@ export default function AdminDashboardClient({ currentUser }: AdminDashboardClie
             </div>
 
             {/* Total Distance */}
-            <div className="p-5 rounded-2xl bg-[#121826] border border-slate-800 shadow-md flex flex-col justify-between">
+            <div className="p-5 rounded-2xl card-premium card-accent-emerald animate-fadeInUp delay-3 group/card">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
                   Total Distance
                 </span>
-                <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
+                <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center group-hover/card:bg-emerald-500/20 transition-colors">
                   <Award className="w-4 h-4" />
                 </div>
               </div>
@@ -589,12 +578,12 @@ export default function AdminDashboardClient({ currentUser }: AdminDashboardClie
             </div>
 
             {/* Active Walkers */}
-            <div className="p-5 rounded-2xl bg-[#121826] border border-slate-800 shadow-md flex flex-col justify-between">
+            <div className="p-5 rounded-2xl card-premium card-accent-teal animate-fadeInUp delay-4 group/card">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
                   Active Walkers
                 </span>
-                <div className="w-8 h-8 rounded-lg bg-teal-500/10 text-teal-400 flex items-center justify-center">
+                <div className="w-8 h-8 rounded-lg bg-teal-500/10 text-teal-400 flex items-center justify-center group-hover/card:bg-teal-500/20 transition-colors">
                   <Users className="w-4 h-4" />
                 </div>
               </div>
@@ -610,7 +599,7 @@ export default function AdminDashboardClient({ currentUser }: AdminDashboardClie
           </div>
 
           {/* 5. Trend Chart */}
-          <div className="p-6 rounded-3xl bg-[#121826] border border-slate-800 shadow-xl">
+          <div className="p-6 rounded-3xl card-premium card-accent-rose animate-fadeInUp delay-5">
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h2 className="text-base font-bold text-white tracking-tight">
@@ -641,7 +630,7 @@ export default function AdminDashboardClient({ currentUser }: AdminDashboardClie
                     fontSize={11}
                     tickLine={false}
                     axisLine={false}
-                    tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`}
+                    tickFormatter={(v) => (v >= 1000 ? `${(v / 1000).toFixed(0)}k` : `${v}`)}
                   />
                   <Tooltip
                     cursor={{ fill: "rgba(220, 38, 38, 0.08)" }}
@@ -738,7 +727,7 @@ export default function AdminDashboardClient({ currentUser }: AdminDashboardClie
                 {top2 && (
                   <div
                     onClick={() => openUserDetail(top2.userId, top2)}
-                    className="p-5 rounded-2xl bg-slate-900/80 border border-slate-700/60 hover:border-slate-500 transition-all cursor-pointer flex flex-col justify-between group shadow-md order-2 md:order-1"
+                    className="p-5 rounded-2xl bg-slate-900/80 border border-slate-700/60 glass-card-hover cursor-pointer flex flex-col justify-between group shadow-md order-2 md:order-1"
                   >
                     <div className="flex items-start justify-between">
                       <div className="flex items-center gap-2">
@@ -752,7 +741,7 @@ export default function AdminDashboardClient({ currentUser }: AdminDashboardClie
                       </span>
                     </div>
                     <div className="my-4 text-center">
-                      <div className="w-14 h-14 mx-auto rounded-full bg-slate-800 border-2 border-slate-400 flex items-center justify-center font-bold text-lg text-white mb-2 overflow-hidden shadow-sm">
+                      <div className="w-14 h-14 mx-auto rounded-full bg-slate-800 border-2 border-slate-400 ring-silver flex items-center justify-center font-bold text-lg text-white mb-2 overflow-hidden shadow-sm">
                         {top2.avatarUrl ? (
                           <img src={top2.avatarUrl} alt={top2.name} className="w-full h-full object-cover" />
                         ) : (
@@ -781,7 +770,7 @@ export default function AdminDashboardClient({ currentUser }: AdminDashboardClie
                       triggerPodiumConfetti();
                       openUserDetail(top1.userId, top1);
                     }}
-                    className="p-6 rounded-2xl bg-gradient-to-b from-amber-950/20 to-slate-900 border border-amber-500/40 hover:border-amber-400 transition-all cursor-pointer flex flex-col justify-between group shadow-xl relative order-1 md:order-2"
+                    className="p-6 rounded-2xl bg-gradient-to-b from-amber-950/30 via-slate-900 to-slate-900 border border-amber-500/40 glass-card-hover cursor-pointer flex flex-col justify-between group shadow-xl relative order-1 md:order-2"
                   >
                     <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full bg-amber-500 text-slate-950 text-[10px] font-black tracking-wider uppercase shadow-md flex items-center gap-1">
                       <Trophy className="w-3 h-3" /> Champion
@@ -798,7 +787,7 @@ export default function AdminDashboardClient({ currentUser }: AdminDashboardClie
                       </span>
                     </div>
                     <div className="my-4 text-center">
-                      <div className="w-16 h-16 mx-auto rounded-full bg-slate-800 border-2 border-amber-400 flex items-center justify-center font-bold text-xl text-white mb-2 overflow-hidden shadow-lg shadow-amber-500/20">
+                      <div className="w-16 h-16 mx-auto rounded-full bg-slate-800 border-2 border-amber-400 ring-gold flex items-center justify-center font-bold text-xl text-white mb-2 overflow-hidden shadow-lg shadow-amber-500/20">
                         {top1.avatarUrl ? (
                           <img src={top1.avatarUrl} alt={top1.name} className="w-full h-full object-cover" />
                         ) : (
@@ -881,7 +870,7 @@ export default function AdminDashboardClient({ currentUser }: AdminDashboardClie
                     <tr
                       key={user.userId}
                       onClick={() => openUserDetail(user.userId, user)}
-                      className="hover:bg-slate-800/40 transition-colors cursor-pointer"
+                      className="table-row-hover transition-colors cursor-pointer border-b border-slate-800/40"
                     >
                       <td className="px-4 py-3.5 font-bold text-slate-300">
                         #{user.rank}

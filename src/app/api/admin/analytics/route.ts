@@ -131,6 +131,8 @@ export async function GET(req: Request) {
     const timeSeriesData = Array.from(dailyMap.values()).map((item) => ({
       date: item.date,
       displayDate: item.displayDate,
+      dateFormatted: item.displayDate,
+      steps: item.totalSteps,
       totalSteps: item.totalSteps,
       activeUsers: item.activeUsers,
       avgStepsPerActiveUser:

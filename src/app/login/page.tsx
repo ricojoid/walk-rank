@@ -87,7 +87,7 @@ export default function LoginPage() {
       <div className="hidden lg:block absolute inset-0 pointer-events-none max-w-6xl mx-auto">
         {/* Top-Left: Streak Champion */}
         <div className="absolute top-28 left-8 animate-float">
-          <div className="flex items-center gap-2.5 px-4 py-2.5 rounded-2xl bg-[#121826]/90 border border-slate-700/80 shadow-2xl backdrop-blur-md">
+          <div className="flex items-center gap-2.5 px-4 py-2.5 rounded-2xl glass-card border border-slate-700/80 shadow-2xl backdrop-blur-md glow-amber">
             <div className="p-1.5 rounded-xl bg-amber-500/15 text-amber-400 border border-amber-500/30">
               <Flame className="w-4 h-4" />
             </div>
@@ -113,7 +113,7 @@ export default function LoginPage() {
 
         {/* Bottom-Left: 70/30 Scoring Engine */}
         <div className="absolute bottom-28 left-12 animate-float-slow">
-          <div className="flex items-center gap-2.5 px-4 py-2.5 rounded-2xl bg-[#121826]/90 border border-slate-700/80 shadow-2xl backdrop-blur-md">
+          <div className="flex items-center gap-2.5 px-4 py-2.5 rounded-2xl glass-card border border-slate-700/80 shadow-2xl backdrop-blur-md glow-red">
             <div className="p-1.5 rounded-xl bg-red-500/15 text-red-400 border border-red-500/30">
               <Zap className="w-4 h-4" />
             </div>
@@ -143,10 +143,10 @@ export default function LoginPage() {
       <div className="w-full max-w-md relative z-10">
         {/* Brand Header */}
         <div className="text-center mb-6">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-tr from-red-600 via-red-500 to-rose-500 p-3 shadow-xl shadow-red-600/30 mb-3 border border-red-400/30 group hover:scale-105 transition-transform">
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-tr from-red-600 via-red-500 to-rose-500 p-3 shadow-xl shadow-red-600/30 mb-3 border border-red-400/30 group hover:scale-105 transition-transform animate-ring-pulse">
             <Footprints className="w-7 h-7 text-white font-black" />
           </div>
-          <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-black tracking-tight gradient-text">
             Walk<span className="text-red-500">Rank</span>
           </h1>
           <p className="text-slate-400 text-xs sm:text-sm mt-1">
@@ -155,7 +155,7 @@ export default function LoginPage() {
         </div>
 
         {/* Main Auth Form Card with Subtle Glowing Ring */}
-        <div className="p-6 sm:p-7 rounded-3xl bg-[#121826]/95 border border-slate-800/90 shadow-2xl relative backdrop-blur-xl transition-all duration-300 hover:border-slate-700">
+        <div className="p-6 sm:p-7 rounded-3xl card-premium card-accent-red relative backdrop-blur-xl animate-fadeInScale">
           {/* Top Subtle Red Accent Line */}
           <div className="absolute -top-px left-8 right-8 h-px bg-gradient-to-r from-transparent via-red-500 to-transparent" />
 
@@ -300,7 +300,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full mt-3 py-3 rounded-xl font-bold text-sm text-white bg-red-600 hover:bg-red-500 shadow-lg shadow-red-600/25 transition-all active:scale-98 disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2 group"
+              className="w-full mt-3 py-3 rounded-xl font-bold text-sm text-white btn-primary flex items-center justify-center gap-2 group cursor-pointer disabled:opacity-50"
             >
               <span>
                 {loading

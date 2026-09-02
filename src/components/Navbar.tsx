@@ -42,12 +42,13 @@ export default function Navbar({ user }: NavbarProps) {
   const isSuperAdmin = user.role === "SUPER_ADMIN";
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-slate-800/80 bg-[#0B0F17]/90 backdrop-blur-md">
+    <>
+      <header className="sticky top-0 z-40 w-full bg-[#0B0F17]/85 backdrop-blur-xl navbar-glow">
       <div className="w-full px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
         {/* Brand Logo */}
         <div className="flex items-center gap-6">
           <Link href={isSuperAdmin ? "/admin" : "/dashboard"} className="flex items-center gap-2.5 group">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-red-600 to-rose-500 flex items-center justify-center shadow-lg shadow-red-500/20 group-hover:scale-105 transition-transform">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-red-600 via-red-500 to-rose-500 flex items-center justify-center shadow-lg shadow-red-500/25 group-hover:shadow-red-500/40 group-hover:scale-105 transition-all">
               <Footprints className="w-5 h-5 text-white font-bold" />
             </div>
             <div>
@@ -171,13 +172,14 @@ export default function Navbar({ user }: NavbarProps) {
           </div>
         </div>
       </div>
-
-      {/* Edit Profile Modal */}
-      <ProfileEditModal
-        isOpen={isProfileModalOpen}
-        onClose={() => setIsProfileModalOpen(false)}
-        user={user}
-      />
     </header>
+
+    {/* Edit Profile Modal */}
+    <ProfileEditModal
+      isOpen={isProfileModalOpen}
+      onClose={() => setIsProfileModalOpen(false)}
+      user={user}
+    />
+  </>
   );
 }

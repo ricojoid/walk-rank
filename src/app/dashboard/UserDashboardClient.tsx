@@ -285,10 +285,11 @@ export default function UserDashboardClient({ initialUser }: UserDashboardClient
   return (
     <div className="space-y-6">
       {/* Top Banner & Greeting with Ambient Glow */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 sm:p-7 rounded-3xl bg-[#121826] border border-slate-800 relative overflow-hidden shadow-xl group transition-all duration-300 hover:border-slate-700/80">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 sm:p-7 rounded-3xl card-premium relative overflow-hidden shadow-xl group animate-fadeInUp bg-noise">
         {/* Subtle Ambient Decorative Glows */}
-        <div className="absolute -top-12 -right-12 w-72 h-72 bg-red-600/10 rounded-full blur-3xl pointer-events-none animate-orb-1" />
-        <div className="absolute -bottom-12 -left-12 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl pointer-events-none animate-orb-2" />
+        <div className="absolute -top-16 -right-16 w-80 h-80 bg-red-600/12 rounded-full blur-[100px] pointer-events-none animate-orb-1" />
+        <div className="absolute -bottom-16 -left-16 w-72 h-72 bg-amber-500/10 rounded-full blur-[100px] pointer-events-none animate-orb-2" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-rose-500/5 rounded-full blur-[120px] pointer-events-none" />
 
         <div className="space-y-1.5 z-10">
           <div className="flex flex-wrap items-center gap-2">
@@ -306,7 +307,7 @@ export default function UserDashboardClient({ initialUser }: UserDashboardClient
               {stats.streak} Day Streak
             </span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-black tracking-tight gradient-text">
             Welcome back, {initialUser.name}
           </h1>
           <p className="text-xs sm:text-sm text-slate-400 flex items-center gap-1.5">
@@ -339,7 +340,7 @@ export default function UserDashboardClient({ initialUser }: UserDashboardClient
       {/* Main Grid: Step Logger & Radial Goal Progress */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Step Logger Form Card */}
-        <div className="lg:col-span-2 rounded-3xl bg-[#121826] border border-slate-800 p-6 shadow-xl relative overflow-hidden flex flex-col justify-between">
+        <div className="lg:col-span-2 rounded-3xl card-premium card-accent-red p-6 relative overflow-hidden flex flex-col justify-between animate-fadeInUp delay-1">
           <div>
             <div className="flex items-center justify-between pb-4 mb-4 border-b border-slate-800">
               <div className="flex items-center gap-2.5">
@@ -554,7 +555,7 @@ export default function UserDashboardClient({ initialUser }: UserDashboardClient
         </div>
 
         {/* Circular Progress & Goal Card */}
-        <div className="rounded-3xl bg-[#121826] border border-slate-800 p-6 shadow-xl flex flex-col items-center justify-between text-center relative overflow-hidden">
+        <div className="rounded-3xl card-premium p-6 flex flex-col items-center justify-between text-center relative overflow-hidden animate-fadeInUp delay-2">
           <div className="w-full flex items-center justify-between pb-3 border-b border-slate-800">
             <h3 className="font-bold text-sm text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
               <Target className="w-4 h-4 text-red-500" />
@@ -567,26 +568,38 @@ export default function UserDashboardClient({ initialUser }: UserDashboardClient
 
           {/* SVG Progress Circle */}
           <div className="relative my-4 flex items-center justify-center">
-            <svg className="w-44 h-44 transform -rotate-90">
+            <svg className={`w-44 h-44 transform -rotate-90 ${isGoalReached ? 'progress-glow-achieved' : 'progress-glow'}`}>
+              <defs>
+                <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#ef4444" />
+                  <stop offset="50%" stopColor="#f43f5e" />
+                  <stop offset="100%" stopColor="#f97316" />
+                </linearGradient>
+                <linearGradient id="achievedGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#10b981" />
+                  <stop offset="50%" stopColor="#34d399" />
+                  <stop offset="100%" stopColor="#6ee7b7" />
+                </linearGradient>
+              </defs>
               <circle
                 cx="88"
                 cy="88"
                 r="72"
                 stroke="currentColor"
-                strokeWidth="14"
-                className="text-slate-800"
+                strokeWidth="12"
+                className="text-slate-800/50"
                 fill="transparent"
               />
               <circle
                 cx="88"
                 cy="88"
                 r="72"
-                stroke="currentColor"
-                strokeWidth="14"
+                stroke={isGoalReached ? 'url(#achievedGradient)' : 'url(#progressGradient)'}
+                strokeWidth="12"
                 strokeDasharray={452.39}
                 strokeDashoffset={452.39 - (452.39 * todayProgress) / 100}
                 strokeLinecap="round"
-                className="text-red-500 transition-all duration-1000 ease-out"
+                className="transition-all duration-1000 ease-out"
                 fill="transparent"
               />
             </svg>
@@ -622,12 +635,12 @@ export default function UserDashboardClient({ initialUser }: UserDashboardClient
 
       {/* 4 KPI Metrics */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="p-5 rounded-2xl bg-[#121826] border border-slate-800 shadow-md">
+        <div className="p-5 rounded-2xl card-premium card-accent-red animate-fadeInUp delay-3 group/card">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
               Total Steps
             </span>
-            <div className="p-2 rounded-xl bg-red-500/10 text-red-500">
+            <div className="p-2 rounded-xl bg-red-500/10 text-red-500 group-hover/card:bg-red-500/20 transition-colors">
               <Footprints className="w-4 h-4" />
             </div>
           </div>
@@ -637,12 +650,12 @@ export default function UserDashboardClient({ initialUser }: UserDashboardClient
           <p className="text-[11px] text-slate-500 mt-1">{stats.logDaysCount} days active</p>
         </div>
 
-        <div className="p-5 rounded-2xl bg-[#121826] border border-slate-800 shadow-md">
+        <div className="p-5 rounded-2xl card-premium card-accent-blue animate-fadeInUp delay-4 group/card">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
               Total Distance
             </span>
-            <div className="p-2 rounded-xl bg-blue-500/10 text-blue-400">
+            <div className="p-2 rounded-xl bg-blue-500/10 text-blue-400 group-hover/card:bg-blue-500/20 transition-colors">
               <Navigation className="w-4 h-4" />
             </div>
           </div>
@@ -650,12 +663,12 @@ export default function UserDashboardClient({ initialUser }: UserDashboardClient
           <p className="text-[11px] text-slate-500 mt-1">Cumulative mileage</p>
         </div>
 
-        <div className="p-5 rounded-2xl bg-[#121826] border border-slate-800 shadow-md">
+        <div className="p-5 rounded-2xl card-premium card-accent-amber animate-fadeInUp delay-5 group/card">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
               Total Calories
             </span>
-            <div className="p-2 rounded-xl bg-amber-500/10 text-amber-400">
+            <div className="p-2 rounded-xl bg-amber-500/10 text-amber-400 group-hover/card:bg-amber-500/20 transition-colors">
               <Flame className="w-4 h-4" />
             </div>
           </div>
@@ -665,12 +678,12 @@ export default function UserDashboardClient({ initialUser }: UserDashboardClient
           <p className="text-[11px] text-slate-500 mt-1">Energy burned</p>
         </div>
 
-        <div className="p-5 rounded-2xl bg-[#121826] border border-slate-800 shadow-md">
+        <div className="p-5 rounded-2xl card-premium card-accent-teal animate-fadeInUp delay-6 group/card">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
               Daily Average
             </span>
-            <div className="p-2 rounded-xl bg-teal-500/10 text-teal-400">
+            <div className="p-2 rounded-xl bg-teal-500/10 text-teal-400 group-hover/card:bg-teal-500/20 transition-colors">
               <TrendingUp className="w-4 h-4" />
             </div>
           </div>
@@ -686,7 +699,7 @@ export default function UserDashboardClient({ initialUser }: UserDashboardClient
       {/* Chart & Mini Leaderboard Row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Step Trend Chart */}
-        <div className="lg:col-span-2 rounded-3xl bg-[#121826] border border-slate-800 p-6 shadow-xl flex flex-col justify-between">
+        <div className="lg:col-span-2 rounded-3xl card-premium card-accent-rose p-6 flex flex-col justify-between animate-fadeInUp delay-3">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 mb-4 border-b border-slate-800">
             <div>
               <h3 className="font-bold text-base text-white flex items-center gap-2">
