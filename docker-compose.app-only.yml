@@ -9,7 +9,7 @@ services:
     container_name: walkrank_app
     restart: always
     ports:
-      - "3000:3000"
+      - "${APP_PORT:-3005}:3000"
     environment:
       DATABASE_URL: "postgresql://admin:admin123@43.157.212.14:5432/walkrank?schema=public&sslmode=disable"
       POSTGRES_DEFAULT_DB: "POSTGRES_DB"

@@ -32,7 +32,7 @@ services:
     container_name: walkrank_app
     restart: always
     ports:
-      - "3000:3000"
+      - "${APP_PORT:-3005}:3000"
     environment:
       # Connect to the postgres service with the dedicated walkrank database
       DATABASE_URL: "postgresql://admin:admin123@postgres:5432/walkrank?schema=public&sslmode=disable"

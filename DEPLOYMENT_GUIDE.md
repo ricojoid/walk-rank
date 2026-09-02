@@ -21,19 +21,16 @@ Database terpisah bernama **`walkrank`** telah berhasil dibuat secara otomatis d
 ### Skenario 1: Deploy App Saja (Rekomendasi jika Container PostgreSQL sudah berjalan di VPS)
 Jika di server VPS Anda container `postgres_db` sudah berjalan di port `5432`:
 
-1. Copy folder project ke VPS:
+1. Clone project di VPS:
    ```bash
-   scp -r "Walk Rank" user@43.157.212.14:/home/user/walkrank
+   git clone https://github.com/ricojoid/walk-rank.git
+   cd walk-rank
    ```
-2. Masuk ke direktori project di VPS:
-   ```bash
-   cd /home/user/walkrank
-   ```
-3. Jalankan container aplikasi dengan file compose app-only:
+2. Jalankan container aplikasi dengan file compose app-only (otomatis menggunakan port host `3005`):
    ```bash
    docker compose -f docker-compose.app-only.yml up -d --build
    ```
-4. Cek log container untuk memastikan database & server berjalan lancar:
+3. Cek log container untuk memastikan database & server berjalan lancar:
    ```bash
    docker logs -f walkrank_app
    ```
@@ -47,18 +44,18 @@ Jika Anda ingin Docker Compose mengelola PostgreSQL dan Next.js secara bersamaan
    ```bash
    docker compose up -d --build
    ```
-2. Container PostgreSQL (`postgres_db`) dan WalkRank (`walkrank_app`) akan otomatis menyala.
+2. Container PostgreSQL (`postgres_db`) dan WalkRank (`walkrank_app`) akan otomatis menyala di port host `3005`.
 3. Script `docker-entrypoint.sh` akan otomatis:
    - Memastikan database `walkrank` tersedia.
    - Melakukan `prisma db push` untuk membuat tabel.
    - Melakukan seeding data akun admin & demo.
-   - Menjalankan Next.js di port `3000`.
+   - Menjalankan Next.js dan mengekspos ke port `3005`.
 
 ---
 
 ## 🌐 Mengakses Aplikasi
-Setelah container berjalan:
-- Buka browser: **`http://43.157.212.14:3000`**
+Port `3000` & `3001` di VPS sudah terpakai oleh aplikasi lain, sehingga WalkRank dialihkan ke port **`3005`** agar tidak tabrakan:
+- Buka browser: **`http://43.157.212.14:3005`**
 
 ### Kredensial Demo:
 - **Super Admin**:
