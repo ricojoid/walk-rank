@@ -18,17 +18,17 @@ Database terpisah bernama **`walkrank`** telah berhasil dibuat secara otomatis d
 
 ## 📋 Pilihan Skenario Deployment
 
-### Skenario 1: Deploy App Saja (Rekomendasi jika Container PostgreSQL sudah berjalan di VPS)
-Jika di server VPS Anda container `postgres_db` sudah berjalan di port `5432`:
+### 🚀 Cara Menjalankan di VPS (Cukup 1 Perintah)
+Karena di server VPS Anda container PostgreSQL sudah aktif di port `5432`:
 
 1. Clone project di VPS:
    ```bash
    git clone https://github.com/ricojoid/walk-rank.git
    cd walk-rank
    ```
-2. Jalankan container aplikasi dengan file compose app-only (otomatis menggunakan port host `3005`):
+2. Cukup jalankan perintah standar Docker Compose:
    ```bash
-   docker compose -f docker-compose.app-only.yml up -d --build
+   docker compose up -d --build
    ```
 3. Cek log container untuk memastikan database & server berjalan lancar:
    ```bash
@@ -37,19 +37,11 @@ Jika di server VPS Anda container `postgres_db` sudah berjalan di port `5432`:
 
 ---
 
-### Skenario 2: Deploy Full-Stack (Aplikasi + PostgreSQL Bersama-sama)
-Jika Anda ingin Docker Compose mengelola PostgreSQL dan Next.js secara bersamaan dalam 1 file compose:
-
-1. Jalankan perintah:
-   ```bash
-   docker compose up -d --build
-   ```
-2. Container PostgreSQL (`postgres_db`) dan WalkRank (`walkrank_app`) akan otomatis menyala di port host `3005`.
-3. Script `docker-entrypoint.sh` akan otomatis:
-   - Memastikan database `walkrank` tersedia.
-   - Melakukan `prisma db push` untuk membuat tabel.
-   - Melakukan seeding data akun admin & demo.
-   - Menjalankan Next.js dan mengekspos ke port `3005`.
+### 📦 Skenario Alternatif (Full-Stack jika PostgreSQL belum ada)
+Jika Anda ingin Docker Compose membuat container PostgreSQL baru dan aplikasi secara bersamaan dari nol:
+```bash
+docker compose -f docker-compose.full-stack.yml up -d --build
+```
 
 ---
 
