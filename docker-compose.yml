@@ -1,0 +1,59 @@
+services:
+  # -----------------------------------------------------------
+  # 1. PostgreSQL Database Service
+  # -----------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    container_name: postgres_db
+    restart: always
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin123
+      POSTGRES_DB: POSTGRES_DB
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - walkrank_network
+
+  # -----------------------------------------------------------
+  # 2. WalkRank Next.js Web Application Service
+  # -----------------------------------------------------------
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: walkrank_app
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      # Connect to the postgres service with the dedicated walkrank database
+      DATABASE_URL: "postgresql://admin:admin123@postgres:5432/walkrank?schema=public&sslmode=disable"
+      POSTGRES_DEFAULT_DB: "POSTGRES_DB"
+      WALKRANK_DB_NAME: "walkrank"
+      JWT_SECRET: "walkrank_secure_jwt_secret_key_superadmin_and_users_2026"
+      NEXT_PUBLIC_APP_NAME: "WalkRank"
+      PORT: 3000
+      NODE_ENV: production
+      # Automatically seed Super Admin and demo users on first launch
+      SEED_DB: "true"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - walkrank_network
+
+volumes:
+  pgdata:
+    driver: local
+
+networks:
+  walkrank_network:
+    driver: bridge

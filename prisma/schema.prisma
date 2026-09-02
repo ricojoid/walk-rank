@@ -1,0 +1,52 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  SUPER_ADMIN
+}
+
+model User {
+  id          String    @id @default(cuid())
+  name        String
+  email       String    @unique
+  password    String
+  role        Role      @default(USER)
+  department  String?   @default("General")
+  dailyGoal   Int       @default(8000)
+  avatarUrl   String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  stepLogs    StepLog[]
+
+  @@map("users")
+}
+
+model StepLog {
+  id          String    @id @default(cuid())
+  userId      String
+  date        DateTime  @db.Date
+  stepCount   Int
+  distanceKm  Float     @default(0)
+  calories    Int       @default(0)
+  note        String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@index([date])
+  @@index([userId])
+  @@map("step_logs")
+}
