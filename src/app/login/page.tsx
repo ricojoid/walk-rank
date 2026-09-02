@@ -46,9 +46,22 @@ export default function LoginPage() {
         body: JSON.stringify(payload),
       });
 
-      const data = await res.json();
+      const contentType = res.headers.get("content-type") || "";
+      let data: any = null;
+
+      if (contentType.includes("application/json")) {
+        data = await res.json();
+      } else {
+        // Response is HTML or plain text (e.g. 502 Bad Gateway, 504 Timeout, 404 Not Found from Nginx/Proxy)
+        const errorText = await res.text();
+        const statusSnippet = res.status ? `(Status ${res.status} ${res.statusText || ""})` : "";
+        throw new Error(
+          `Server merespons dengan format tidak valid ${statusSnippet}. Kemungkinan container backend mati atau proxy Nginx 502 Bad Gateway.`
+        );
+      }
+
       if (!res.ok) {
-        throw new Error(data.error || "Authentication failed.");
+        throw new Error(data?.error || "Autentikasi gagal. Silakan coba lagi.");
       }
 
       if (data.user.role === "SUPER_ADMIN") {
