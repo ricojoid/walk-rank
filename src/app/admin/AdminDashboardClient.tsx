@@ -274,7 +274,7 @@ export default function AdminDashboardClient({ currentUser }: AdminDashboardClie
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-red-500/15 text-red-400 border border-red-500/30 flex items-center gap-1.5 uppercase tracking-wider">
               <ShieldCheck className="w-3.5 h-3.5 text-red-500" />
-              TMMIN Super Admin
+              FID Super Admin
             </span>
             <span className="text-xs text-slate-400 font-medium">
               • {usersList.length || kpi.range.totalUsers} Registered Employees
