@@ -14,6 +14,7 @@ import {
   Shield,
   User,
   Image as ImageIcon,
+  KeyRound,
 } from "lucide-react";
 import EvidenceViewerModal from "@/components/EvidenceViewerModal";
 
@@ -25,6 +26,7 @@ interface UserDetailModalProps {
   startDate?: string;
   endDate?: string;
   onUpdateRole?: (userId: string, newRole: "USER" | "SUPER_ADMIN", dailyGoal: number) => Promise<void>;
+  onResetPassword?: (user: any) => void;
 }
 
 export default function UserDetailModal({
@@ -35,6 +37,7 @@ export default function UserDetailModal({
   startDate,
   endDate,
   onUpdateRole,
+  onResetPassword,
 }: UserDetailModalProps) {
   const [loading, setLoading] = useState(false);
   const [userData, setUserData] = useState<any>(initialUser || null);
@@ -243,12 +246,22 @@ export default function UserDetailModal({
                   />
                 </div>
               </div>
-              <div className="flex justify-end pt-1">
+              <div className="flex items-center justify-between pt-1">
+                {onResetPassword && (
+                  <button
+                    type="button"
+                    onClick={() => onResetPassword(userData)}
+                    className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 transition-colors inline-flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <KeyRound className="w-3.5 h-3.5" />
+                    <span>Reset Password</span>
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={handleSaveProfile}
                   disabled={saveLoading}
-                  className="px-4 py-1.5 text-xs font-bold rounded-lg bg-red-600 hover:bg-red-500 text-white transition-colors cursor-pointer shadow-sm disabled:opacity-50"
+                  className="px-4 py-1.5 text-xs font-bold rounded-lg bg-red-600 hover:bg-red-500 text-white transition-colors cursor-pointer shadow-sm disabled:opacity-50 ml-auto"
                 >
                   {saveLoading ? "Saving..." : "Save Changes"}
                 </button>
