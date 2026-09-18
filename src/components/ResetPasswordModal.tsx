@@ -18,7 +18,8 @@ interface ResetPasswordModalProps {
   isOpen: boolean;
   onClose: () => void;
   user: {
-    id: string;
+    id?: string;
+    userId?: string;
     name: string;
     email: string;
     username?: string | null;
@@ -54,6 +55,8 @@ export default function ResetPasswordModal({
   }, [isOpen, user]);
 
   if (!isOpen || !user) return null;
+
+  const targetUserId = user.id || user.userId;
 
   const generateRandomPassword = () => {
     const charset = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%";
@@ -93,6 +96,11 @@ export default function ResetPasswordModal({
       return;
     }
 
+    if (!targetUserId) {
+      setError("User ID could not be identified.");
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -100,7 +108,7 @@ export default function ResetPasswordModal({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          userId: user.id,
+          userId: targetUserId,
           newPassword: newPassword.trim(),
         }),
       });

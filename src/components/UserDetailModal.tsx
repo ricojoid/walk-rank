@@ -261,7 +261,12 @@ export default function UserDetailModal({
                 {onResetPassword && (
                   <button
                     type="button"
-                    onClick={() => onResetPassword(userData)}
+                    onClick={() =>
+                      onResetPassword({
+                        ...userData,
+                        id: userData?.id || userData?.userId || userId,
+                      })
+                    }
                     className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 transition-colors inline-flex items-center gap-1.5 cursor-pointer"
                   >
                     <KeyRound className="w-3.5 h-3.5" />
