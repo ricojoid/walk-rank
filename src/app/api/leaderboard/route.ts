@@ -10,20 +10,63 @@ export async function GET(req: Request) {
     }
 
     const { searchParams } = new URL(req.url);
-    const period = searchParams.get("period") || "today"; // "today", "7d", "30d"
+    const period = searchParams.get("period") || "today"; // "today", "7d", "30d", "custom", "specific"
+    const startDateParam = searchParams.get("startDate");
+    const endDateParam = searchParams.get("endDate");
+    const datesParam = searchParams.get("dates");
 
     const today = new Date();
     const todayDateOnly = new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()));
 
-    let startDate: Date;
-    let endDate = todayDateOnly;
+    let isSpecificDates = false;
+    let selectedDateStrings: string[] = [];
+    let selectedDateObjs: Date[] = [];
+    let startDate: Date = todayDateOnly;
+    let endDate: Date = todayDateOnly;
+    let diffDays = 1;
 
-    if (period === "7d") {
-      startDate = new Date(todayDateOnly.getTime() - 6 * 86400000);
-    } else if (period === "30d") {
-      startDate = new Date(todayDateOnly.getTime() - 29 * 86400000);
-    } else {
-      startDate = todayDateOnly;
+    if (datesParam && datesParam.trim().length > 0) {
+      selectedDateStrings = Array.from(
+        new Set(
+          datesParam
+            .split(",")
+            .map((s) => s.trim())
+            .filter((s) => /^\d{4}-\d{2}-\d{2}$/.test(s))
+        )
+      ).sort();
+
+      if (selectedDateStrings.length > 0) {
+        isSpecificDates = true;
+        selectedDateObjs = selectedDateStrings.map((dStr) => {
+          const [y, m, d] = dStr.split("-").map(Number);
+          return new Date(Date.UTC(y, m - 1, d));
+        });
+        diffDays = Math.max(1, selectedDateObjs.length);
+        startDate = selectedDateObjs[0];
+        endDate = selectedDateObjs[selectedDateObjs.length - 1];
+      }
+    }
+
+    if (!isSpecificDates) {
+      if (startDateParam && endDateParam) {
+        const s = new Date(startDateParam);
+        const e = new Date(endDateParam);
+        startDate = new Date(Date.UTC(s.getFullYear(), s.getMonth(), s.getDate()));
+        endDate = new Date(Date.UTC(e.getFullYear(), e.getMonth(), e.getDate()));
+      } else if (period === "7d") {
+        startDate = new Date(todayDateOnly.getTime() - 6 * 86400000);
+        endDate = todayDateOnly;
+      } else if (period === "30d") {
+        startDate = new Date(todayDateOnly.getTime() - 29 * 86400000);
+        endDate = todayDateOnly;
+      } else {
+        startDate = todayDateOnly;
+        endDate = todayDateOnly;
+      }
+      diffDays = Math.max(
+        1,
+        Math.round((endDate.getTime() - startDate.getTime()) / 86400000) + 1
+      );
     }
 
     const allUsers = await prisma.user.findMany({
@@ -38,12 +81,18 @@ export async function GET(req: Request) {
     });
 
     const logs = await prisma.stepLog.findMany({
-      where: {
-        date: {
-          gte: startDate,
-          lte: endDate,
-        },
-      },
+      where: isSpecificDates
+        ? {
+            date: {
+              in: selectedDateObjs,
+            },
+          }
+        : {
+            date: {
+              gte: startDate,
+              lte: endDate,
+            },
+          },
     });
 
     const userStatsMap = new Map<
@@ -100,11 +149,6 @@ export async function GET(req: Request) {
         stat.totalExcessSteps += excess;
       }
     }
-
-    const diffDays = Math.max(
-      1,
-      Math.round((endDate.getTime() - startDate.getTime()) / 86400000) + 1
-    );
 
     // Find the highest accumulated counted steps among all participants in this date range
     const allStats = Array.from(userStatsMap.values());
@@ -188,6 +232,14 @@ export async function GET(req: Request) {
     return NextResponse.json({
       period,
       totalDays: diffDays,
+      dateRange: {
+        mode: isSpecificDates ? "specific_dates" : "range",
+        isSpecificDates,
+        startDate: startDate.toISOString().split("T")[0],
+        endDate: endDate.toISOString().split("T")[0],
+        totalDays: diffDays,
+        selectedDates: isSpecificDates ? selectedDateStrings : undefined,
+      },
       leaderboard,
     });
   } catch (error) {

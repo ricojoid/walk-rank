@@ -203,7 +203,7 @@ export default function UserDashboardClient({ initialUser }: UserDashboardClient
   };
 
   const handleDeleteLog = async (id: string) => {
-    if (!confirm("Apakah Anda yakin ingin menghapus data langkah ini?")) return;
+    if (!confirm("Are you sure you want to delete this step log entry?")) return;
     setDeleteLoading(id);
     try {
       const res = await fetch(`/api/steps/${id}`, { method: "DELETE" });
@@ -942,7 +942,7 @@ export default function UserDashboardClient({ initialUser }: UserDashboardClient
                   <th className="px-4 py-3">Est. Distance & Calories</th>
                   <th className="px-4 py-3">Evidence</th>
                   <th className="px-4 py-3">Notes</th>
-                  <th className="px-4 py-3 text-right">Actions</th>
+                  <th className="px-4 py-3 text-right sticky right-0 bg-slate-900/95 z-20 shadow-[-6px_0_10px_-2px_rgba(0,0,0,0.5)]">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/60 bg-slate-900/30">
@@ -950,7 +950,7 @@ export default function UserDashboardClient({ initialUser }: UserDashboardClient
                   const d = new Date(log.date);
                   const isMet = log.stepCount >= goal;
                   return (
-                    <tr key={log.id} className="hover:bg-slate-800/40 transition-colors">
+                    <tr key={log.id} className="hover:bg-slate-800/40 transition-colors group">
                       <td className="px-4 py-3 font-semibold text-slate-200">
                         {d.toLocaleDateString("en-US", {
                           weekday: "short",
@@ -1006,7 +1006,7 @@ export default function UserDashboardClient({ initialUser }: UserDashboardClient
                       <td className="px-4 py-3 text-slate-400 italic max-w-xs truncate">
                         {log.note || "-"}
                       </td>
-                      <td className="px-4 py-3 text-right">
+                      <td className="px-4 py-3 text-right whitespace-nowrap sticky right-0 bg-[#121826] group-hover:bg-[#1a2234] transition-colors z-10 shadow-[-6px_0_10px_-2px_rgba(0,0,0,0.5)]">
                         <div className="flex items-center justify-end gap-1.5">
                           <button
                             type="button"

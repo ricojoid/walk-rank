@@ -19,23 +19,56 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const startDateParam = searchParams.get("startDate");
     const endDateParam = searchParams.get("endDate");
+    const datesParam = searchParams.get("dates");
 
     const today = new Date();
     const todayDateOnly = new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()));
     const yesterdayDateOnly = new Date(todayDateOnly.getTime() - 86400000);
 
-    // Default range: last 7 days if not provided
-    let startDate: Date;
-    let endDate: Date;
+    // Specific dates selection mode vs Range mode
+    let isSpecificDates = false;
+    let selectedDateStrings: string[] = [];
+    let selectedDateObjs: Date[] = [];
+    let startDate: Date = todayDateOnly;
+    let endDate: Date = todayDateOnly;
+    let diffDays = 1;
 
-    if (startDateParam && endDateParam) {
-      const s = new Date(startDateParam);
-      const e = new Date(endDateParam);
-      startDate = new Date(Date.UTC(s.getFullYear(), s.getMonth(), s.getDate()));
-      endDate = new Date(Date.UTC(e.getFullYear(), e.getMonth(), e.getDate()));
-    } else {
-      endDate = todayDateOnly;
-      startDate = new Date(todayDateOnly.getTime() - 6 * 86400000); // 7 days inclusive
+    if (datesParam && datesParam.trim().length > 0) {
+      selectedDateStrings = Array.from(
+        new Set(
+          datesParam
+            .split(",")
+            .map((s) => s.trim())
+            .filter((s) => /^\d{4}-\d{2}-\d{2}$/.test(s))
+        )
+      ).sort();
+
+      if (selectedDateStrings.length > 0) {
+        isSpecificDates = true;
+        selectedDateObjs = selectedDateStrings.map((dStr) => {
+          const [y, m, d] = dStr.split("-").map(Number);
+          return new Date(Date.UTC(y, m - 1, d));
+        });
+        diffDays = Math.max(1, selectedDateObjs.length);
+        startDate = selectedDateObjs[0];
+        endDate = selectedDateObjs[selectedDateObjs.length - 1];
+      }
+    }
+
+    if (!isSpecificDates) {
+      if (startDateParam && endDateParam) {
+        const s = new Date(startDateParam);
+        const e = new Date(endDateParam);
+        startDate = new Date(Date.UTC(s.getFullYear(), s.getMonth(), s.getDate()));
+        endDate = new Date(Date.UTC(e.getFullYear(), e.getMonth(), e.getDate()));
+      } else {
+        endDate = todayDateOnly;
+        startDate = new Date(todayDateOnly.getTime() - 6 * 86400000); // 7 days inclusive
+      }
+      diffDays = Math.max(
+        1,
+        Math.round((endDate.getTime() - startDate.getTime()) / 86400000) + 1
+      );
     }
 
     // 1. Fetch Today & Yesterday Total Steps for KPI cards
@@ -61,14 +94,20 @@ export async function GET(req: Request) {
     // Total registered users
     const totalUsersCount = await prisma.user.count();
 
-    // 2. Fetch all logs in the selected Date Range
+    // 2. Fetch all logs in the selected Date Range or Specific Dates
     const rangeLogs = await prisma.stepLog.findMany({
-      where: {
-        date: {
-          gte: startDate,
-          lte: endDate,
-        },
-      },
+      where: isSpecificDates
+        ? {
+            date: {
+              in: selectedDateObjs,
+            },
+          }
+        : {
+            date: {
+              gte: startDate!,
+              lte: endDate!,
+            },
+          },
       include: {
         user: {
           select: {
@@ -89,33 +128,44 @@ export async function GET(req: Request) {
     const totalDistanceRange = Number((totalStepsRange * 0.00076).toFixed(2));
     const totalCaloriesRange = Math.round(totalStepsRange * 0.042);
 
-    // Calculate number of days in range
-    const diffDays = Math.max(
-      1,
-      Math.round((endDate.getTime() - startDate.getTime()) / 86400000) + 1
-    );
-
     // 3. Build Daily Time Series for charts
     const dailyMap = new Map<
       string,
       { date: string; displayDate: string; totalSteps: number; activeUsers: number; logs: any[] }
     >();
 
-    // Pre-populate all days in range so chart is continuous
-    for (let i = 0; i < diffDays; i++) {
-      const d = new Date(startDate.getTime() + i * 86400000);
-      const key = d.toISOString().split("T")[0];
-      const displayDate = d.toLocaleDateString("id-ID", {
-        day: "numeric",
-        month: "short",
-      });
-      dailyMap.set(key, {
-        date: key,
-        displayDate,
-        totalSteps: 0,
-        activeUsers: 0,
-        logs: [],
-      });
+    if (isSpecificDates) {
+      for (const d of selectedDateObjs) {
+        const key = d.toISOString().split("T")[0];
+        const displayDate = d.toLocaleDateString("id-ID", {
+          day: "numeric",
+          month: "short",
+        });
+        dailyMap.set(key, {
+          date: key,
+          displayDate,
+          totalSteps: 0,
+          activeUsers: 0,
+          logs: [],
+        });
+      }
+    } else {
+      // Pre-populate all days in range so chart is continuous
+      for (let i = 0; i < diffDays; i++) {
+        const d = new Date(startDate!.getTime() + i * 86400000);
+        const key = d.toISOString().split("T")[0];
+        const displayDate = d.toLocaleDateString("id-ID", {
+          day: "numeric",
+          month: "short",
+        });
+        dailyMap.set(key, {
+          date: key,
+          displayDate,
+          totalSteps: 0,
+          activeUsers: 0,
+          logs: [],
+        });
+      }
     }
 
     for (const log of rangeLogs) {
@@ -310,9 +360,12 @@ export async function GET(req: Request) {
 
     return NextResponse.json({
       dateRange: {
+        mode: isSpecificDates ? "specific_dates" : "range",
+        isSpecificDates,
         startDate: startDate.toISOString().split("T")[0],
         endDate: endDate.toISOString().split("T")[0],
         totalDays: diffDays,
+        selectedDates: isSpecificDates ? selectedDateStrings : undefined,
       },
       kpi: {
         today: {

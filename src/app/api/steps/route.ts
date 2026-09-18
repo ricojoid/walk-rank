@@ -14,6 +14,7 @@ export async function GET(req: Request) {
     const endDateParam = searchParams.get("endDate");
     const limitParam = searchParams.get("limit");
     const userIdParam = searchParams.get("userId");
+    const datesParam = searchParams.get("dates");
 
     // Super admin can inspect other users' steps
     const targetUserId =
@@ -45,7 +46,23 @@ export async function GET(req: Request) {
     }
 
     const whereClause: any = { userId: targetUserId };
-    if (startDateParam || endDateParam) {
+    if (datesParam && datesParam.trim().length > 0) {
+      const selectedDateStrings = Array.from(
+        new Set(
+          datesParam
+            .split(",")
+            .map((s) => s.trim())
+            .filter((s) => /^\d{4}-\d{2}-\d{2}$/.test(s))
+        )
+      );
+      if (selectedDateStrings.length > 0) {
+        const selectedDateObjs = selectedDateStrings.map((dStr) => {
+          const [y, m, d] = dStr.split("-").map(Number);
+          return new Date(Date.UTC(y, m - 1, d));
+        });
+        whereClause.date = { in: selectedDateObjs };
+      }
+    } else if (startDateParam || endDateParam) {
       whereClause.date = dateFilter;
     }
 

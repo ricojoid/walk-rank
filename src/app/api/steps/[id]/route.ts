@@ -20,12 +20,12 @@ export async function PUT(
     });
 
     if (!existing) {
-      return NextResponse.json({ error: "Data log tidak ditemukan" }, { status: 404 });
+      return NextResponse.json({ error: "Step log not found" }, { status: 404 });
     }
 
     // Only owner or SUPER_ADMIN can edit
     if (existing.userId !== user.id && user.role !== "SUPER_ADMIN") {
-      return NextResponse.json({ error: "Akses ditolak" }, { status: 403 });
+      return NextResponse.json({ error: "Access denied" }, { status: 403 });
     }
 
     const steps = Math.max(0, parseInt(stepCount, 10) || 0);
@@ -45,7 +45,7 @@ export async function PUT(
     return NextResponse.json({ success: true, log: updated });
   } catch (error) {
     console.error("Error updating step log:", error);
-    return NextResponse.json({ error: "Gagal memperbarui data" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to update step log" }, { status: 500 });
   }
 }
 
@@ -66,20 +66,20 @@ export async function DELETE(
     });
 
     if (!existing) {
-      return NextResponse.json({ error: "Data log tidak ditemukan" }, { status: 404 });
+      return NextResponse.json({ error: "Step log not found" }, { status: 404 });
     }
 
     if (existing.userId !== user.id && user.role !== "SUPER_ADMIN") {
-      return NextResponse.json({ error: "Akses ditolak" }, { status: 403 });
+      return NextResponse.json({ error: "Access denied" }, { status: 403 });
     }
 
     await prisma.stepLog.delete({
       where: { id },
     });
 
-    return NextResponse.json({ success: true, message: "Log berhasil dihapus" });
+    return NextResponse.json({ success: true, message: "Log deleted successfully" });
   } catch (error) {
     console.error("Error deleting step log:", error);
-    return NextResponse.json({ error: "Gagal menghapus data" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to delete log" }, { status: 500 });
   }
 }

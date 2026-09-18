@@ -21,6 +21,12 @@ import {
   BarChart3,
   Filter,
   RefreshCw,
+  Sparkles,
+  Briefcase,
+  Image as ImageIcon,
+  ChevronLeft,
+  ChevronRight,
+  Info,
 } from "lucide-react";
 import confetti from "canvas-confetti";
 import {
@@ -35,6 +41,9 @@ import {
 import UserDetailModal from "@/components/UserDetailModal";
 import CreateUserModal from "@/components/CreateUserModal";
 import DeleteUserConfirmModal from "@/components/DeleteUserConfirmModal";
+import SpecificDatePickerModal from "@/components/SpecificDatePickerModal";
+import DeleteLogConfirmModal from "@/components/DeleteLogConfirmModal";
+import EvidenceViewerModal from "@/components/EvidenceViewerModal";
 
 interface AdminDashboardClientProps {
   currentUser: {
@@ -54,11 +63,13 @@ export default function AdminDashboardClient({ currentUser }: AdminDashboardClie
     .toISOString()
     .split("T")[0];
 
-  const [activeTab, setActiveTab] = useState<"analytics" | "users">("analytics");
-  const [preset, setPreset] = useState<"today" | "7d" | "30d" | "month" | "custom">("7d");
+  const [activeTab, setActiveTab] = useState<"analytics" | "users" | "logs">("analytics");
+  const [preset, setPreset] = useState<"today" | "7d" | "30d" | "month" | "custom" | "specific">("7d");
   const [startDate, setStartDate] = useState<string>(last7DaysStr);
   const [endDate, setEndDate] = useState<string>(todayStr);
   const [showCustomDate, setShowCustomDate] = useState<boolean>(false);
+  const [selectedDates, setSelectedDates] = useState<string[]>([]);
+  const [isSpecificDateModalOpen, setIsSpecificDateModalOpen] = useState<boolean>(false);
 
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [showAllInTable, setShowAllInTable] = useState<boolean>(false);
@@ -79,6 +90,16 @@ export default function AdminDashboardClient({ currentUser }: AdminDashboardClie
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [isLeaderboardMaximized, setIsLeaderboardMaximized] = useState(false);
+
+  // Admin Logs Management Tab State
+  const [adminLogs, setAdminLogs] = useState<any[]>([]);
+  const [logsLoading, setLogsLoading] = useState(false);
+  const [logsSearchTerm, setLogsSearchTerm] = useState("");
+  const [logsPage, setLogsPage] = useState(1);
+  const [logsTotalPages, setLogsTotalPages] = useState(1);
+  const [logsTotalCount, setLogsTotalCount] = useState(0);
+  const [selectedLogEvidence, setSelectedLogEvidence] = useState<any | null>(null);
+  const [deleteTargetLog, setDeleteTargetLog] = useState<any | null>(null);
 
   // Keyboard shortcut to close maximized view
   useEffect(() => {
@@ -106,10 +127,22 @@ export default function AdminDashboardClient({ currentUser }: AdminDashboardClie
     }
   };
 
-  const fetchAnalytics = async (sDate: string, eDate: string, isSilent = false) => {
+  const fetchAnalytics = async (
+    sDate: string,
+    eDate: string,
+    isSilent = false,
+    datesArr?: string[]
+  ) => {
     if (!isSilent) setLoading(true);
     try {
-      const res = await fetch(`/api/admin/analytics?startDate=${sDate}&endDate=${eDate}`);
+      const datesToUse = datesArr !== undefined ? datesArr : selectedDates;
+      let url = `/api/admin/analytics?`;
+      if (datesToUse && datesToUse.length > 0) {
+        url += `dates=${datesToUse.join(",")}`;
+      } else {
+        url += `startDate=${sDate}&endDate=${eDate}`;
+      }
+      const res = await fetch(url);
       if (res.ok) {
         const data = await res.json();
         setAnalyticsData(data);
@@ -118,6 +151,38 @@ export default function AdminDashboardClient({ currentUser }: AdminDashboardClie
       console.error("Failed to fetch admin analytics:", err);
     } finally {
       if (!isSilent) setLoading(false);
+    }
+  };
+
+  const fetchAdminLogs = async (
+    page = 1,
+    isSilent = false,
+    datesArr?: string[],
+    searchQuery?: string
+  ) => {
+    if (!isSilent) setLogsLoading(true);
+    try {
+      const q = searchQuery !== undefined ? searchQuery : logsSearchTerm;
+      const datesToUse = datesArr !== undefined ? datesArr : selectedDates;
+      let url = `/api/admin/logs?page=${page}&limit=50`;
+      if (q) url += `&search=${encodeURIComponent(q)}`;
+      if (datesToUse && datesToUse.length > 0) {
+        url += `&dates=${datesToUse.join(",")}`;
+      } else if (startDate && endDate) {
+        url += `&startDate=${startDate}&endDate=${endDate}`;
+      }
+      const res = await fetch(url);
+      if (res.ok) {
+        const data = await res.json();
+        setAdminLogs(data.logs || []);
+        setLogsTotalCount(data.totalCount || 0);
+        setLogsTotalPages(data.totalPages || 1);
+        setLogsPage(data.page || 1);
+      }
+    } catch (err) {
+      console.error("Failed to fetch admin logs:", err);
+    } finally {
+      if (!isSilent) setLogsLoading(false);
     }
   };
 
@@ -133,8 +198,12 @@ export default function AdminDashboardClient({ currentUser }: AdminDashboardClie
     const startPolling = () => {
       if (intervalId) clearInterval(intervalId);
       intervalId = setInterval(() => {
-        if (!document.hidden && activeTab === "analytics") {
-          fetchAnalytics(startDate, endDate, true);
+        if (!document.hidden) {
+          if (activeTab === "analytics") {
+            fetchAnalytics(startDate, endDate, true);
+          } else if (activeTab === "logs") {
+            fetchAdminLogs(logsPage, true);
+          }
         }
       }, 15000);
     };
@@ -142,7 +211,11 @@ export default function AdminDashboardClient({ currentUser }: AdminDashboardClie
     const handleVisibilityChange = () => {
       if (!document.hidden) {
         // Immediately fetch fresh data on tab return
-        fetchAnalytics(startDate, endDate, true);
+        if (activeTab === "analytics") {
+          fetchAnalytics(startDate, endDate, true);
+        } else if (activeTab === "logs") {
+          fetchAdminLogs(logsPage, true);
+        }
         startPolling();
       } else if (intervalId) {
         // Pause polling when tab is hidden to conserve server resources
@@ -151,8 +224,12 @@ export default function AdminDashboardClient({ currentUser }: AdminDashboardClie
     };
 
     const handleFocus = () => {
-      if (!document.hidden && activeTab === "analytics") {
-        fetchAnalytics(startDate, endDate, true);
+      if (!document.hidden) {
+        if (activeTab === "analytics") {
+          fetchAnalytics(startDate, endDate, true);
+        } else if (activeTab === "logs") {
+          fetchAdminLogs(logsPage, true);
+        }
       }
     };
 
@@ -165,7 +242,7 @@ export default function AdminDashboardClient({ currentUser }: AdminDashboardClie
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       window.removeEventListener("focus", handleFocus);
     };
-  }, [startDate, endDate, activeTab]);
+  }, [startDate, endDate, selectedDates, activeTab, logsPage, logsSearchTerm]);
 
   const handleQuickRoleChange = async (userId: string, newRole: "USER" | "SUPER_ADMIN") => {
     try {
@@ -186,6 +263,7 @@ export default function AdminDashboardClient({ currentUser }: AdminDashboardClie
   const handleApplyPreset = (type: "today" | "7d" | "30d" | "month") => {
     setPreset(type);
     setShowCustomDate(false);
+    setSelectedDates([]);
     let s = last7DaysStr;
     let e = todayStr;
 
@@ -205,12 +283,19 @@ export default function AdminDashboardClient({ currentUser }: AdminDashboardClie
 
     setStartDate(s);
     setEndDate(e);
-    fetchAnalytics(s, e);
+    fetchAnalytics(s, e, false, []);
+    if (activeTab === "logs") {
+      fetchAdminLogs(1, false, []);
+    }
   };
 
   const handleCustomDateSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    fetchAnalytics(startDate, endDate);
+    setSelectedDates([]);
+    fetchAnalytics(startDate, endDate, false, []);
+    if (activeTab === "logs") {
+      fetchAdminLogs(1, false, []);
+    }
   };
 
   const handleUpdateRole = async (userId: string, newRole: "USER" | "SUPER_ADMIN", dailyGoal: number) => {
@@ -379,6 +464,27 @@ export default function AdminDashboardClient({ currentUser }: AdminDashboardClie
             {usersList.length}
           </span>
         </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            setActiveTab("logs");
+            fetchAdminLogs(1);
+          }}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+            activeTab === "logs"
+              ? "bg-red-600 text-white shadow-lg shadow-red-600/20"
+              : "bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800"
+          }`}
+        >
+          <Footprints className="w-4 h-4" />
+          <span>Activity Logs (All Records)</span>
+          {logsTotalCount > 0 && (
+            <span className="ml-1 px-1.5 py-0.5 rounded-md text-[10px] bg-slate-800 text-slate-300 font-mono">
+              {logsTotalCount}
+            </span>
+          )}
+        </button>
       </div>
 
       {/* ========================================================= */}
@@ -449,6 +555,24 @@ export default function AdminDashboardClient({ currentUser }: AdminDashboardClie
                 >
                   Custom
                 </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPreset("specific");
+                    setShowCustomDate(false);
+                    setIsSpecificDateModalOpen(true);
+                  }}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
+                    preset === "specific"
+                      ? "bg-red-600 text-white shadow-sm"
+                      : "text-slate-400 hover:text-white"
+                  }`}
+                >
+                  <Calendar className="w-3.5 h-3.5 text-amber-400" />
+                  <span>
+                    Specific Dates {selectedDates.length > 0 ? `(${selectedDates.length} Days)` : ""}
+                  </span>
+                </button>
               </div>
             </div>
 
@@ -456,12 +580,31 @@ export default function AdminDashboardClient({ currentUser }: AdminDashboardClie
             <div className="flex flex-wrap items-center gap-3 text-xs text-slate-400">
               <div className="flex items-center gap-1.5">
                 <Calendar className="w-4 h-4 text-red-400" />
-                <span>
-                  Active Range:{" "}
-                  <strong className="text-slate-200">
-                    {startDate} &rarr; {endDate}
-                  </strong>
-                </span>
+                {preset === "specific" && selectedDates.length > 0 ? (
+                  <div className="flex items-center gap-2">
+                    <span>
+                      Specific Filter:{" "}
+                      <strong className="text-red-400 font-black">
+                        {selectedDates.length} Days Included
+                      </strong>{" "}
+                      ({selectedDates[0]} to {selectedDates[selectedDates.length - 1]})
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setIsSpecificDateModalOpen(true)}
+                      className="px-2 py-0.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-[11px] font-semibold text-slate-200 border border-slate-700 transition-colors cursor-pointer"
+                    >
+                      Change Dates
+                    </button>
+                  </div>
+                ) : (
+                  <span>
+                    Active Range:{" "}
+                    <strong className="text-slate-200">
+                      {startDate} &rarr; {endDate}
+                    </strong>
+                  </span>
+                )}
               </div>
 
               {/* Live Polling Status Badge & Refresh Button */}
@@ -476,7 +619,7 @@ export default function AdminDashboardClient({ currentUser }: AdminDashboardClie
                   className="p-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white border border-slate-800 transition-colors cursor-pointer"
                   title="Force Refresh Data Now"
                 >
-                  <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin text-red-400" : ""}`} />
+                  <RefreshCw className={`w-3.5 h-3.5 ${loading || logsLoading ? "animate-spin text-red-400" : ""}`} />
                 </button>
               </div>
             </div>
@@ -862,7 +1005,7 @@ export default function AdminDashboardClient({ currentUser }: AdminDashboardClie
                     <th className="px-4 py-3 font-bold uppercase tracking-wider">Counted Steps (70%)</th>
                     <th className="px-4 py-3 font-bold uppercase tracking-wider">Goal Consistency (30%)</th>
                     <th className="px-4 py-3 font-bold uppercase tracking-wider">Excess Steps</th>
-                    <th className="px-4 py-3 font-bold uppercase tracking-wider text-right">Actions</th>
+                    <th className="px-4 py-3 font-bold uppercase tracking-wider text-right sticky right-0 bg-slate-900/95 z-20 shadow-[-6px_0_10px_-2px_rgba(0,0,0,0.5)]">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/60">
@@ -870,7 +1013,7 @@ export default function AdminDashboardClient({ currentUser }: AdminDashboardClie
                     <tr
                       key={user.userId}
                       onClick={() => openUserDetail(user.userId, user)}
-                      className="table-row-hover transition-colors cursor-pointer border-b border-slate-800/40"
+                      className="table-row-hover transition-colors cursor-pointer border-b border-slate-800/40 group"
                     >
                       <td className="px-4 py-3.5 font-bold text-slate-300">
                         #{user.rank}
@@ -916,7 +1059,7 @@ export default function AdminDashboardClient({ currentUser }: AdminDashboardClie
                           <span className="text-slate-600 text-xs">-</span>
                         )}
                       </td>
-                      <td className="px-4 py-3.5 text-right" onClick={(e) => e.stopPropagation()}>
+                      <td className="px-4 py-3.5 text-right whitespace-nowrap sticky right-0 bg-[#121826] group-hover:bg-[#1a2234] transition-colors z-10 shadow-[-6px_0_10px_-2px_rgba(0,0,0,0.5)]" onClick={(e) => e.stopPropagation()}>
                         <button
                           type="button"
                           onClick={() => openUserDetail(user.userId, user)}
@@ -1055,7 +1198,7 @@ export default function AdminDashboardClient({ currentUser }: AdminDashboardClie
                     <th className="px-4 py-3.5 font-bold uppercase tracking-wider">Daily Goal</th>
                     <th className="px-4 py-3.5 font-bold uppercase tracking-wider">Activity Logs</th>
                     <th className="px-4 py-3.5 font-bold uppercase tracking-wider">Joined Date</th>
-                    <th className="px-4 py-3.5 font-bold uppercase tracking-wider text-right">Privilege Actions</th>
+                    <th className="px-4 py-3.5 font-bold uppercase tracking-wider text-right sticky right-0 bg-slate-900/95 z-20 shadow-[-6px_0_10px_-2px_rgba(0,0,0,0.5)]">Privilege Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/60">
@@ -1069,7 +1212,7 @@ export default function AdminDashboardClient({ currentUser }: AdminDashboardClie
                     filteredUsersList.map((user: any) => {
                       const isCurrentUser = user.id === currentUser.id;
                       return (
-                        <tr key={user.id} className="hover:bg-slate-800/40 transition-colors">
+                        <tr key={user.id} className="hover:bg-slate-800/40 transition-colors group">
                           {/* Employee Info */}
                           <td className="px-4 py-3.5">
                             <div className="flex items-center gap-3">
@@ -1143,7 +1286,7 @@ export default function AdminDashboardClient({ currentUser }: AdminDashboardClie
                           </td>
 
                           {/* Actions */}
-                          <td className="px-4 py-3.5 text-right">
+                          <td className="px-4 py-3.5 text-right whitespace-nowrap sticky right-0 bg-[#121826] group-hover:bg-[#1a2234] transition-colors z-10 shadow-[-6px_0_10px_-2px_rgba(0,0,0,0.5)]">
                             <div className="inline-flex items-center gap-1.5">
                               {/* View Details Button */}
                               <button
@@ -1185,6 +1328,280 @@ export default function AdminDashboardClient({ currentUser }: AdminDashboardClie
       )}
 
       {/* ========================================================= */}
+      {/* TAB 3: ALL EMPLOYEE ACTIVITY LOGS & MANAGEMENT             */}
+      {/* ========================================================= */}
+      {activeTab === "logs" && (
+        <div className="space-y-6 animate-in fade-in duration-150">
+          {/* Header & Filter Card */}
+          <div className="p-6 rounded-3xl bg-[#121826] border border-slate-800 shadow-xl space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h2 className="text-xl font-black text-white tracking-tight flex items-center gap-2">
+                  <Footprints className="w-5 h-5 text-red-500" />
+                  All Employee Activity Logs
+                </h2>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Complete history of step logs recorded by employees. Super Admins can inspect photo evidence and delete invalid records.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold px-3 py-1 rounded-xl bg-slate-900 border border-slate-800 text-slate-300">
+                  Total: <strong className="text-white">{logsTotalCount}</strong> entries
+                </span>
+                <button
+                  type="button"
+                  onClick={() => fetchAdminLogs(logsPage)}
+                  className="p-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white border border-slate-800 transition-colors cursor-pointer"
+                  title="Refresh activity logs"
+                >
+                  <RefreshCw className={`w-4 h-4 ${logsLoading ? "animate-spin text-red-400" : ""}`} />
+                </button>
+              </div>
+            </div>
+
+            {/* Search Bar & Active Date Indicator */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-slate-800/80">
+              <div className="relative flex-1 max-w-md">
+                <Search className="w-4 h-4 text-slate-500 absolute left-3.5 top-3" />
+                <input
+                  type="text"
+                  value={logsSearchTerm}
+                  onChange={(e) => {
+                    setLogsSearchTerm(e.target.value);
+                    fetchAdminLogs(1, false, undefined, e.target.value);
+                  }}
+                  placeholder="Search by employee name, email, or department..."
+                  className="w-full bg-slate-900 border border-slate-700/80 rounded-xl pl-9 pr-4 py-2 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-red-500/50"
+                />
+              </div>
+
+              <div className="flex items-center gap-2 text-xs text-slate-400">
+                <Calendar className="w-4 h-4 text-red-400" />
+                {preset === "specific" && selectedDates.length > 0 ? (
+                  <span>
+                    Active Date Filter:{" "}
+                    <strong className="text-red-400 font-bold">
+                      {selectedDates.length} Days Selected
+                    </strong>
+                  </span>
+                ) : (
+                  <span>
+                    Date Range:{" "}
+                    <strong className="text-slate-200">
+                      {startDate} &rarr; {endDate}
+                    </strong>
+                  </span>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setIsSpecificDateModalOpen(true)}
+                  className="ml-1 px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-colors cursor-pointer"
+                >
+                  Change Dates
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Table Card */}
+          <div className="rounded-3xl bg-[#121826] border border-slate-800 overflow-hidden shadow-2xl">
+            {logsLoading && adminLogs.length === 0 ? (
+              <div className="py-24 flex flex-col items-center justify-center text-slate-400 gap-3">
+                <div className="w-8 h-8 border-2 border-red-500/20 border-t-red-500 rounded-full animate-spin" />
+                <p className="text-xs font-medium">Loading activity logs...</p>
+              </div>
+            ) : adminLogs.length === 0 ? (
+              <div className="py-20 text-center text-slate-500 text-xs">
+                No activity logs found matching the search/filter criteria.
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs text-slate-300">
+                  <thead className="bg-slate-900/90 text-[11px] uppercase tracking-wider text-slate-400 border-b border-slate-800">
+                    <tr>
+                      <th className="px-5 py-3.5">Employee</th>
+                      <th className="px-5 py-3.5">Date</th>
+                      <th className="px-5 py-3.5">Steps & Metrics</th>
+                      <th className="px-5 py-3.5">Target Status</th>
+                      <th className="px-5 py-3.5">Photo Evidence</th>
+                      <th className="px-5 py-3.5">Notes</th>
+                      <th className="px-5 py-3.5 text-right sticky right-0 bg-slate-900/95 z-20 shadow-[-6px_0_10px_-2px_rgba(0,0,0,0.5)]">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/60 bg-slate-900/30">
+                    {adminLogs.map((log) => {
+                      const d = new Date(log.date);
+                      const formattedDate = d.toLocaleDateString("en-US", {
+                        weekday: "short",
+                        day: "numeric",
+                        month: "short",
+                        year: "numeric",
+                      });
+                      const dailyGoal = log.user?.dailyGoal || 8000;
+                      const isMet = log.stepCount >= dailyGoal;
+                      const counted = Math.min(log.stepCount, 10000);
+                      const excess = Math.max(0, log.stepCount - 10000);
+
+                      return (
+                        <tr key={log.id} className="hover:bg-slate-800/40 transition-colors group">
+                          {/* Employee */}
+                          <td className="px-5 py-3.5">
+                            <div className="flex items-center gap-3">
+                              {log.user?.avatarUrl ? (
+                                <img
+                                  src={log.user.avatarUrl}
+                                  alt={log.user.name}
+                                  className="w-8 h-8 rounded-full object-cover border border-slate-700 shrink-0"
+                                />
+                              ) : (
+                                <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center font-bold text-xs text-slate-300 border border-slate-700 shrink-0">
+                                  {log.user?.name?.charAt(0) || "U"}
+                                </div>
+                              )}
+                              <div>
+                                <p className="font-bold text-white text-xs">{log.user?.name || "Employee"}</p>
+                                <p className="text-[10px] text-slate-400 font-mono">{log.user?.email}</p>
+                                {log.user?.department && (
+                                  <span className="inline-block mt-0.5 px-1.5 py-0.2 rounded text-[9px] font-medium bg-slate-800 text-slate-400 border border-slate-700/60">
+                                    {log.user.department}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </td>
+
+                          {/* Date */}
+                          <td className="px-5 py-3.5 font-medium text-slate-200 whitespace-nowrap">
+                            {formattedDate}
+                          </td>
+
+                          {/* Steps & Metrics */}
+                          <td className="px-5 py-3.5">
+                            <div className="space-y-0.5">
+                              <div>
+                                <span className="font-black text-white text-sm">
+                                  {counted.toLocaleString("en-US")}
+                                </span>
+                                <span className="text-[10px] text-slate-400 ml-1">counted steps</span>
+                              </div>
+                              <p className="text-[10px] text-slate-400">
+                                Actual: {log.stepCount.toLocaleString("en-US")} • {log.distanceKm || 0} km • {log.calories || 0} kcal
+                                {excess > 0 && (
+                                  <span className="text-amber-400 ml-1">(+{excess.toLocaleString("en-US")} bonus)</span>
+                                )}
+                              </p>
+                            </div>
+                          </td>
+
+                          {/* Target Status */}
+                          <td className="px-5 py-3.5 whitespace-nowrap">
+                            {isMet ? (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                                <CheckCircle2 className="w-3 h-3" /> Target Achieved (+1 Point)
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                                {(dailyGoal - log.stepCount).toLocaleString("en-US")} remaining
+                              </span>
+                            )}
+                          </td>
+
+                          {/* Photo Evidence */}
+                          <td className="px-5 py-3.5 whitespace-nowrap">
+                            {log.evidenceUrl ? (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setSelectedLogEvidence({
+                                    evidenceUrl: log.evidenceUrl,
+                                    userName: log.user?.name,
+                                    date: log.date,
+                                    stepCount: log.stepCount,
+                                    note: log.note,
+                                  })
+                                }
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 hover:border-red-500/50 transition-colors cursor-pointer"
+                              >
+                                <img
+                                  src={log.evidenceUrl}
+                                  alt="Evidence"
+                                  className="w-4 h-4 rounded object-cover border border-slate-700"
+                                />
+                                <span>Inspect Photo</span>
+                              </button>
+                            ) : (
+                              <span className="text-slate-600 text-xs">-</span>
+                            )}
+                          </td>
+
+                          {/* Note */}
+                          <td className="px-5 py-3.5 text-slate-400 italic max-w-xs truncate text-[11px]">
+                            {log.note || "-"}
+                          </td>
+
+                          {/* Action Delete */}
+                          <td className="px-5 py-3.5 text-right whitespace-nowrap sticky right-0 bg-[#121826] group-hover:bg-[#1a2234] transition-colors z-10 shadow-[-6px_0_10px_-2px_rgba(0,0,0,0.5)]">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setDeleteTargetLog({
+                                  id: log.id,
+                                  date: log.date,
+                                  stepCount: log.stepCount,
+                                  userName: log.user?.name,
+                                  userEmail: log.user?.email,
+                                  avatarUrl: log.user?.avatarUrl,
+                                  evidenceUrl: log.evidenceUrl,
+                                  note: log.note,
+                                })
+                              }
+                              className="px-2.5 py-1 rounded-lg text-rose-300 hover:text-white bg-rose-950/30 hover:bg-rose-900/50 border border-rose-500/30 hover:border-rose-400 transition-colors inline-flex items-center gap-1 cursor-pointer text-xs font-semibold shadow-sm"
+                              title="Delete this activity log"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                              <span>Delete</span>
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {/* Pagination Controls */}
+            {logsTotalPages > 1 && (
+              <div className="px-6 py-4 border-t border-slate-800 bg-slate-900/60 flex items-center justify-between text-xs text-slate-400">
+                <span>
+                  Page <strong className="text-white">{logsPage}</strong> of <strong className="text-white">{logsTotalPages}</strong> ({logsTotalCount} entries)
+                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    disabled={logsPage <= 1 || logsLoading}
+                    onClick={() => fetchAdminLogs(logsPage - 1)}
+                    className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed border border-slate-700 transition-colors cursor-pointer"
+                  >
+                    Previous
+                  </button>
+                  <button
+                    type="button"
+                    disabled={logsPage >= logsTotalPages || logsLoading}
+                    onClick={() => fetchAdminLogs(logsPage + 1)}
+                    className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed border border-slate-700 transition-colors cursor-pointer"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================= */}
       {/* MODALS                                                    */}
       {/* ========================================================= */}
 
@@ -1195,6 +1612,7 @@ export default function AdminDashboardClient({ currentUser }: AdminDashboardClie
         onUserCreated={() => {
           fetchUsersList();
           fetchAnalytics(startDate, endDate);
+          fetchAdminLogs(logsPage, true);
         }}
       />
 
@@ -1206,6 +1624,7 @@ export default function AdminDashboardClient({ currentUser }: AdminDashboardClie
         onUserDeleted={() => {
           fetchUsersList();
           fetchAnalytics(startDate, endDate);
+          fetchAdminLogs(logsPage, true);
         }}
       />
 
@@ -1221,7 +1640,46 @@ export default function AdminDashboardClient({ currentUser }: AdminDashboardClie
         initialUser={selectedUser}
         startDate={startDate}
         endDate={endDate}
+        selectedDates={selectedDates}
         onUpdateRole={handleUpdateRole}
+        onLogDeleted={() => {
+          fetchAnalytics(startDate, endDate, true);
+          fetchUsersList();
+          fetchAdminLogs(logsPage, true);
+        }}
+      />
+
+      {/* 4. Specific Date Picker Modal */}
+      <SpecificDatePickerModal
+        isOpen={isSpecificDateModalOpen}
+        onClose={() => setIsSpecificDateModalOpen(false)}
+        selectedDates={selectedDates}
+        onApplyDates={(dates) => {
+          setPreset("specific");
+          setSelectedDates(dates);
+          setShowCustomDate(false);
+          fetchAnalytics(startDate, endDate, false, dates);
+          if (activeTab === "logs") fetchAdminLogs(1, false, dates);
+        }}
+      />
+
+      {/* 5. Delete Log Confirmation Modal (for Activity Logs tab) */}
+      <DeleteLogConfirmModal
+        isOpen={!!deleteTargetLog}
+        onClose={() => setDeleteTargetLog(null)}
+        log={deleteTargetLog}
+        onLogDeleted={() => {
+          fetchAdminLogs(logsPage);
+          fetchAnalytics(startDate, endDate, true);
+          fetchUsersList();
+        }}
+      />
+
+      {/* 6. Evidence Viewer Modal (for Activity Logs tab) */}
+      <EvidenceViewerModal
+        isOpen={!!selectedLogEvidence}
+        onClose={() => setSelectedLogEvidence(null)}
+        {...selectedLogEvidence}
       />
     </div>
   );

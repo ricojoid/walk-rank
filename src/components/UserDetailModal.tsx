@@ -14,8 +14,10 @@ import {
   Shield,
   User,
   Image as ImageIcon,
+  Trash2,
 } from "lucide-react";
 import EvidenceViewerModal from "@/components/EvidenceViewerModal";
+import DeleteLogConfirmModal from "@/components/DeleteLogConfirmModal";
 
 interface UserDetailModalProps {
   isOpen: boolean;
@@ -24,7 +26,9 @@ interface UserDetailModalProps {
   initialUser?: any;
   startDate?: string;
   endDate?: string;
+  selectedDates?: string[];
   onUpdateRole?: (userId: string, newRole: "USER" | "SUPER_ADMIN", dailyGoal: number) => Promise<void>;
+  onLogDeleted?: () => void;
 }
 
 export default function UserDetailModal({
@@ -34,7 +38,9 @@ export default function UserDetailModal({
   initialUser,
   startDate,
   endDate,
+  selectedDates,
   onUpdateRole,
+  onLogDeleted,
 }: UserDetailModalProps) {
   const [loading, setLoading] = useState(false);
   const [userData, setUserData] = useState<any>(initialUser || null);
@@ -43,6 +49,7 @@ export default function UserDetailModal({
   const [editGoal, setEditGoal] = useState<number>(10000);
   const [saveLoading, setSaveLoading] = useState(false);
   const [selectedEvidence, setSelectedEvidence] = useState<any>(null);
+  const [deleteTargetLog, setDeleteTargetLog] = useState<any | null>(null);
 
   useEffect(() => {
     if (isOpen && userId) {
@@ -56,15 +63,19 @@ export default function UserDetailModal({
       setLogs([]);
       fetchUserDetails();
     }
-  }, [isOpen, userId, initialUser, startDate, endDate]);
+  }, [isOpen, userId, initialUser, startDate, endDate, selectedDates]);
 
   const fetchUserDetails = async () => {
     if (!userId) return;
     setLoading(true);
     try {
       let url = `/api/steps?userId=${userId}`;
-      if (startDate) url += `&startDate=${startDate}`;
-      if (endDate) url += `&endDate=${endDate}`;
+      if (selectedDates && selectedDates.length > 0) {
+        url += `&dates=${selectedDates.join(",")}`;
+      } else {
+        if (startDate) url += `&startDate=${startDate}`;
+        if (endDate) url += `&endDate=${endDate}`;
+      }
 
       const logsRes = await fetch(url);
       const logsData = await logsRes.json();
@@ -260,11 +271,15 @@ export default function UserDetailModal({
           <div>
             <h4 className="text-xs font-bold uppercase tracking-wider text-slate-300 mb-3 flex items-center justify-between">
               <span>Step Activity History ({logs.length} entries)</span>
-              {startDate && endDate && (
+              {selectedDates && selectedDates.length > 0 ? (
+                <span className="text-[11px] text-red-400 font-semibold bg-red-500/10 px-2 py-0.5 rounded border border-red-500/20">
+                  Filter: {selectedDates.length} Selected Dates
+                </span>
+              ) : startDate && endDate ? (
                 <span className="text-[11px] text-slate-400 font-normal">
                   Period: {startDate} to {endDate}
                 </span>
-              )}
+              ) : null}
             </h4>
 
             {loading ? (
@@ -276,7 +291,7 @@ export default function UserDetailModal({
             ) : (
               <div className="overflow-x-auto rounded-xl border border-slate-800">
                 <table className="w-full text-left text-xs text-slate-300">
-                  <thead className="bg-slate-900/80 text-[11px] uppercase tracking-wider text-slate-400 border-b border-slate-800">
+                  <thead className="bg-slate-900/90 text-[11px] uppercase tracking-wider text-slate-400 border-b border-slate-800">
                     <tr>
                       <th className="px-3 py-2.5">Date</th>
                       <th className="px-3 py-2.5">Counted Steps</th>
@@ -284,6 +299,7 @@ export default function UserDetailModal({
                       <th className="px-3 py-2.5">Target (8k) & Score</th>
                       <th className="px-3 py-2.5">Photo Evidence</th>
                       <th className="px-3 py-2.5">Notes</th>
+                      <th className="px-3 py-2.5 text-right sticky right-0 bg-slate-900/95 z-20 shadow-[-6px_0_10px_-2px_rgba(0,0,0,0.5)]">Action</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800/60 bg-slate-900/30">
@@ -294,7 +310,7 @@ export default function UserDetailModal({
                       const excess = Math.max(0, log.stepCount - 10000);
 
                       return (
-                        <tr key={log.id} className="hover:bg-slate-800/40 transition-colors">
+                        <tr key={log.id} className="hover:bg-slate-800/40 transition-colors group">
                           <td className="px-3 py-2.5 font-medium text-slate-200 whitespace-nowrap">
                             {d.toLocaleDateString("en-US", {
                               weekday: "short",
@@ -359,6 +375,28 @@ export default function UserDetailModal({
                           <td className="px-3 py-2.5 text-slate-400 italic max-w-xs truncate">
                             {log.note || "-"}
                           </td>
+                          <td className="px-3 py-2.5 text-right whitespace-nowrap sticky right-0 bg-[#121826] group-hover:bg-[#1a2234] transition-colors z-10 shadow-[-6px_0_10px_-2px_rgba(0,0,0,0.5)]">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setDeleteTargetLog({
+                                  id: log.id,
+                                  date: log.date,
+                                  stepCount: log.stepCount,
+                                  userName: userData?.name,
+                                  userEmail: userData?.email,
+                                  avatarUrl: userData?.avatarUrl,
+                                  evidenceUrl: log.evidenceUrl,
+                                  note: log.note,
+                                })
+                              }
+                              className="px-2.5 py-1 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 border border-transparent hover:border-rose-500/30 transition-colors inline-flex items-center gap-1 cursor-pointer text-[11px] font-semibold"
+                              title="Delete this step log entry"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                              <span>Delete</span>
+                            </button>
+                          </td>
                         </tr>
                       );
                     })}
@@ -385,6 +423,17 @@ export default function UserDetailModal({
         isOpen={!!selectedEvidence}
         onClose={() => setSelectedEvidence(null)}
         {...selectedEvidence}
+      />
+
+      {/* Delete Log Confirmation Modal */}
+      <DeleteLogConfirmModal
+        isOpen={!!deleteTargetLog}
+        onClose={() => setDeleteTargetLog(null)}
+        log={deleteTargetLog}
+        onLogDeleted={() => {
+          fetchUserDetails();
+          onLogDeleted?.();
+        }}
       />
     </div>
   );
