@@ -21,12 +21,7 @@ import {
   BarChart3,
   Filter,
   RefreshCw,
-  Sparkles,
-  Briefcase,
-  Image as ImageIcon,
-  ChevronLeft,
-  ChevronRight,
-  Info,
+  KeyRound,
 } from "lucide-react";
 import confetti from "canvas-confetti";
 import {
@@ -41,6 +36,7 @@ import {
 import UserDetailModal from "@/components/UserDetailModal";
 import CreateUserModal from "@/components/CreateUserModal";
 import DeleteUserConfirmModal from "@/components/DeleteUserConfirmModal";
+import ResetPasswordModal from "@/components/ResetPasswordModal";
 import SpecificDatePickerModal from "@/components/SpecificDatePickerModal";
 import DeleteLogConfirmModal from "@/components/DeleteLogConfirmModal";
 import EvidenceViewerModal from "@/components/EvidenceViewerModal";
@@ -84,6 +80,7 @@ export default function AdminDashboardClient({ currentUser }: AdminDashboardClie
   const [userRoleFilter, setUserRoleFilter] = useState<"ALL" | "USER" | "SUPER_ADMIN">("ALL");
   const [isCreateUserOpen, setIsCreateUserOpen] = useState(false);
   const [deleteTargetUser, setDeleteTargetUser] = useState<any | null>(null);
+  const [resetPasswordUser, setResetPasswordUser] = useState<any | null>(null);
 
   // User inspection modal
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
@@ -1299,6 +1296,17 @@ export default function AdminDashboardClient({ currentUser }: AdminDashboardClie
                                 <span>Activity</span>
                               </button>
 
+                              {/* Reset Password Button */}
+                              <button
+                                type="button"
+                                onClick={() => setResetPasswordUser(user)}
+                                className="px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 hover:border-amber-400 transition-colors inline-flex items-center gap-1 cursor-pointer"
+                                title="Reset Employee Password"
+                              >
+                                <KeyRound className="w-3.5 h-3.5 text-amber-400" />
+                                <span>Reset Pwd</span>
+                              </button>
+
                               {/* Delete User Button (with Confirmation Dialog) */}
                               <button
                                 type="button"
@@ -1647,9 +1655,17 @@ export default function AdminDashboardClient({ currentUser }: AdminDashboardClie
           fetchUsersList();
           fetchAdminLogs(logsPage, true);
         }}
+        onResetPassword={(u) => setResetPasswordUser(u)}
       />
 
-      {/* 4. Specific Date Picker Modal */}
+      {/* 4. Reset Password Modal */}
+      <ResetPasswordModal
+        isOpen={!!resetPasswordUser}
+        onClose={() => setResetPasswordUser(null)}
+        user={resetPasswordUser}
+      />
+
+      {/* 5. Specific Date Picker Modal */}
       <SpecificDatePickerModal
         isOpen={isSpecificDateModalOpen}
         onClose={() => setIsSpecificDateModalOpen(false)}
@@ -1663,7 +1679,7 @@ export default function AdminDashboardClient({ currentUser }: AdminDashboardClie
         }}
       />
 
-      {/* 5. Delete Log Confirmation Modal (for Activity Logs tab) */}
+      {/* 6. Delete Log Confirmation Modal (for Activity Logs tab) */}
       <DeleteLogConfirmModal
         isOpen={!!deleteTargetLog}
         onClose={() => setDeleteTargetLog(null)}
@@ -1675,7 +1691,7 @@ export default function AdminDashboardClient({ currentUser }: AdminDashboardClie
         }}
       />
 
-      {/* 6. Evidence Viewer Modal (for Activity Logs tab) */}
+      {/* 7. Evidence Viewer Modal (for Activity Logs tab) */}
       <EvidenceViewerModal
         isOpen={!!selectedLogEvidence}
         onClose={() => setSelectedLogEvidence(null)}
