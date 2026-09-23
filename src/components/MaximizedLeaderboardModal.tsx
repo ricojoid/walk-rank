@@ -127,15 +127,15 @@ export default function MaximizedLeaderboardModal({
   const totalCompanySteps = leaderboard.reduce((acc, u) => acc + u.totalSteps, 0);
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-[#0B0F17]/98 backdrop-blur-2xl text-slate-100 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+    <div className="leaderboard-fullscreen fixed inset-0 z-50 flex flex-col text-slate-100 overflow-hidden animate-fadeInScale">
       {/* Top Header Bar */}
-      <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800/80 bg-[#121826]/80 shrink-0">
+      <div className="flex flex-wrap items-center justify-between gap-4 px-4 sm:px-6 py-4 border-b border-slate-800/80 bg-[#121826]/80 shrink-0">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-2xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400 font-bold">
             <Trophy className="w-5 h-5" />
           </div>
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <h2 className="text-xl font-black text-white tracking-tight">
                 Employee Leaderboard
               </h2>
@@ -150,7 +150,7 @@ export default function MaximizedLeaderboardModal({
         </div>
 
         {/* Right Controls: Live Badge, Period Selector & Minimize Button */}
-        <div className="flex items-center gap-2.5">
+        <div className="flex flex-wrap items-center gap-2.5">
           {/* Live Sync Status Badge */}
           <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
@@ -340,6 +340,7 @@ export default function MaximizedLeaderboardModal({
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Search by name or email..."
+                aria-label="Search leaderboard participants"
                 className="w-full sm:w-64 bg-slate-900 border border-slate-700 rounded-xl pl-8 pr-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500/50"
               />
             </div>

@@ -58,6 +58,12 @@ interface UserDashboardClientProps {
 export default function UserDashboardClient({ initialUser }: UserDashboardClientProps) {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
   const [chartRange, setChartRange] = useState<"7d" | "30d">("7d");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
@@ -285,7 +291,7 @@ export default function UserDashboardClient({ initialUser }: UserDashboardClient
   return (
     <div className="space-y-6">
       {/* Top Banner & Greeting with Ambient Glow */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 sm:p-7 rounded-3xl card-premium relative overflow-hidden shadow-xl group animate-fadeInUp bg-noise">
+      <div className="dashboard-hero flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 sm:p-8 rounded-3xl card-premium relative overflow-hidden shadow-xl group animate-fadeInUp bg-noise">
         {/* Subtle Ambient Decorative Glows */}
         <div className="absolute -top-16 -right-16 w-80 h-80 bg-red-600/12 rounded-full blur-[100px] pointer-events-none animate-orb-1" />
         <div className="absolute -bottom-16 -left-16 w-72 h-72 bg-amber-500/10 rounded-full blur-[100px] pointer-events-none animate-orb-2" />
@@ -738,6 +744,7 @@ export default function UserDashboardClient({ initialUser }: UserDashboardClient
           </div>
 
           <div className="h-64 sm:h-72 w-full">
+            {isMounted ? (
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <defs>
@@ -792,6 +799,9 @@ export default function UserDashboardClient({ initialUser }: UserDashboardClient
                 />
               </AreaChart>
             </ResponsiveContainer>
+            ) : (
+              <div className="h-full w-full flex items-center justify-center text-slate-500 text-xs">Loading chart...</div>
+            )}
           </div>
         </div>
 

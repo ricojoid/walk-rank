@@ -91,8 +91,10 @@ export async function GET(req: Request) {
       ? [...todayLogs].sort((a, b) => b.stepCount - a.stepCount)[0]
       : null;
 
-    // Total registered users
-    const totalUsersCount = await prisma.user.count();
+    // Total registered users (SUPER_ADMIN excluded — they are observers, not participants)
+    const totalUsersCount = await prisma.user.count({
+      where: { role: "USER" },
+    });
 
     // 2. Fetch all logs in the selected Date Range or Specific Dates
     const rangeLogs = await prisma.stepLog.findMany({
@@ -190,7 +192,9 @@ export async function GET(req: Request) {
     }));
 
     // 4. Build User Leaderboard for selected Date Range
+    // Only include USER role in leaderboard — SUPER_ADMIN are admins, not participants
     const allUsers = await prisma.user.findMany({
+      where: { role: "USER" },
       select: {
         id: true,
         name: true,

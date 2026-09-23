@@ -59,6 +59,12 @@ export default function AdminDashboardClient({ currentUser }: AdminDashboardClie
     .toISOString()
     .split("T")[0];
 
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
   const [activeTab, setActiveTab] = useState<"analytics" | "users" | "logs">("analytics");
   const [preset, setPreset] = useState<"today" | "7d" | "30d" | "month" | "custom" | "specific">("7d");
   const [startDate, setStartDate] = useState<string>(last7DaysStr);
@@ -68,7 +74,6 @@ export default function AdminDashboardClient({ currentUser }: AdminDashboardClie
   const [isSpecificDateModalOpen, setIsSpecificDateModalOpen] = useState<boolean>(false);
 
   const [searchTerm, setSearchTerm] = useState<string>("");
-  const [showAllInTable, setShowAllInTable] = useState<boolean>(false);
 
   const [analyticsData, setAnalyticsData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -324,9 +329,10 @@ export default function AdminDashboardClient({ currentUser }: AdminDashboardClie
         spread: 70,
         origin: { y: 0.6 },
         colors: ["#DC2626", "#EF4444", "#FFFFFF", "#F59E0B"],
+        disableForReducedMotion: true,
       });
     } catch (e) {
-      // ignore
+      console.error("Unable to display celebration:", e);
     }
   };
 
@@ -383,15 +389,12 @@ export default function AdminDashboardClient({ currentUser }: AdminDashboardClie
   const top3 = rawLeaderboard[2];
 
   const hasPodium = rawLeaderboard.length >= 3 && !searchTerm;
-  const tableDisplayList =
-    hasPodium && !showAllInTable
-      ? filteredLeaderboard.slice(3)
-      : filteredLeaderboard;
+  const tableDisplayList = filteredLeaderboard;
 
   return (
     <div className="space-y-6 w-full">
       {/* 1. Executive Top Header with Ambient Glow */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 sm:p-7 rounded-3xl card-premium relative overflow-hidden group animate-fadeInUp bg-noise">
+      <div className="dashboard-hero flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 sm:p-8 rounded-3xl card-premium relative overflow-hidden group animate-fadeInUp bg-noise">
         {/* Subtle Ambient Decorative Glows */}
         <div className="absolute -top-16 -right-16 w-80 h-80 bg-red-600/12 rounded-full blur-[100px] pointer-events-none animate-orb-1" />
         <div className="absolute -bottom-16 -left-16 w-72 h-72 bg-rose-600/10 rounded-full blur-[100px] pointer-events-none animate-orb-2" />
@@ -409,10 +412,10 @@ export default function AdminDashboardClient({ currentUser }: AdminDashboardClie
             </span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-black tracking-tight gradient-text">
-            Employee Activity & Analytics
+            Every step. A stronger team.
           </h1>
           <p className="text-xs sm:text-sm text-slate-400 max-w-2xl">
-            Activity tracking with weighted scoring: 70% Counted Steps (max 10k/day) + 30% Target Consistency (8k/day goal).
+            Your team’s activity, progress, and standout walkers — all in one place.
           </p>
         </div>
 
@@ -429,7 +432,7 @@ export default function AdminDashboardClient({ currentUser }: AdminDashboardClie
       </div>
 
       {/* 2. Admin Navigation Tabs */}
-      <div className="flex items-center gap-2 border-b border-slate-800 pb-2">
+      <div className="flex flex-wrap items-center gap-2 border-b border-slate-800 pb-3">
         <button
           type="button"
           onClick={() => setActiveTab("analytics")}
@@ -440,7 +443,7 @@ export default function AdminDashboardClient({ currentUser }: AdminDashboardClie
           }`}
         >
           <BarChart3 className="w-4 h-4" />
-          <span>Activity Analytics & Rankings</span>
+          <span>Overview & Rankings</span>
         </button>
 
         <button
@@ -456,7 +459,7 @@ export default function AdminDashboardClient({ currentUser }: AdminDashboardClie
           }`}
         >
           <Users className="w-4 h-4" />
-          <span>Employee Directory & Access</span>
+          <span>Employee Directory</span>
           <span className="ml-1 px-1.5 py-0.5 rounded-md text-[10px] bg-slate-800 text-slate-300 font-mono">
             {usersList.length}
           </span>
@@ -738,75 +741,20 @@ export default function AdminDashboardClient({ currentUser }: AdminDashboardClie
             </div>
           </div>
 
-          {/* 5. Trend Chart */}
-          <div className="p-6 rounded-3xl card-premium card-accent-rose animate-fadeInUp delay-5">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h2 className="text-base font-bold text-white tracking-tight">
-                  Daily Step Trends
-                </h2>
-                <p className="text-xs text-slate-400">
-                  Total collective steps logged across the company per day
-                </p>
-              </div>
-              <span className="text-xs px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-800 text-slate-300 font-mono">
-                {timeSeries.length} Days Recorded
-              </span>
-            </div>
-
-            <div className="h-64 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={timeSeries} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#1E293B" vertical={false} />
-                  <XAxis
-                    dataKey="dateFormatted"
-                    stroke="#64748B"
-                    fontSize={11}
-                    tickLine={false}
-                    axisLine={false}
-                  />
-                  <YAxis
-                    stroke="#64748B"
-                    fontSize={11}
-                    tickLine={false}
-                    axisLine={false}
-                    tickFormatter={(v) => (v >= 1000 ? `${(v / 1000).toFixed(0)}k` : `${v}`)}
-                  />
-                  <Tooltip
-                    cursor={{ fill: "rgba(220, 38, 38, 0.08)" }}
-                    content={({ active, payload, label }) => {
-                      if (active && payload && payload.length) {
-                        return (
-                          <div className="p-3 rounded-xl bg-slate-900/95 border border-slate-700 shadow-xl text-xs text-slate-200">
-                            <p className="font-bold text-white mb-1">{label}</p>
-                            <p className="text-red-400 font-medium">
-                              Total Steps: {Number(payload[0].value).toLocaleString("en-US")}
-                            </p>
-                          </div>
-                        );
-                      }
-                      return null;
-                    }}
-                  />
-                  <Bar dataKey="steps" fill="#DC2626" radius={[6, 6, 0, 0]} maxBarSize={40} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
           {/* 6. Leaderboard & Rankings Section */}
           <div
             className={
               isLeaderboardMaximized
-                ? "fixed inset-0 z-50 p-6 sm:p-8 bg-[#0B0F17]/98 backdrop-blur-2xl overflow-y-auto flex flex-col space-y-6 animate-in fade-in zoom-in-95 duration-200"
-                : "p-6 sm:p-7 rounded-3xl bg-[#121826] border border-slate-800 shadow-xl space-y-6"
+                ? "leaderboard-fullscreen fixed inset-0 z-50 p-4 sm:p-8 overflow-y-auto space-y-6 animate-fadeInScale"
+                : "leaderboard-panel p-4 sm:p-7 rounded-3xl space-y-6"
             }
           >
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-slate-800/80">
+            <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-5 pb-5 border-b border-slate-700/60">
               <div>
-                <div className="flex items-center gap-2">
-                  <h2 className="text-lg font-bold text-white tracking-tight">
-                    Leaderboard & Rankings
+                <p className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.22em] text-teal-300 mb-2"><Trophy className="w-3.5 h-3.5" /> The team leaderboard</p>
+                <div className="flex flex-wrap items-center gap-3">
+                  <h2 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
+                    Small steps. Big achievements.
                   </h2>
                   <span className="text-xs px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 font-medium">
                     {rawLeaderboard.length} Participants
@@ -817,8 +765,8 @@ export default function AdminDashboardClient({ currentUser }: AdminDashboardClie
                     </span>
                   )}
                 </div>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  Ranked by 70% Counted Steps + 30% Target Consistency
+                <p className="text-xs text-slate-400 mt-2">
+                  {startDate} — {endDate} · Ranked by counted steps (70%) + goal consistency (30%)
                 </p>
               </div>
 
@@ -831,7 +779,8 @@ export default function AdminDashboardClient({ currentUser }: AdminDashboardClie
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     placeholder="Search participant..."
-                    className="w-full bg-slate-900 border border-slate-700/80 rounded-xl pl-9 pr-3 py-1.5 text-xs text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-red-500"
+                    aria-label="Search leaderboard participants"
+                    className="w-full bg-slate-900 border border-slate-700/80 rounded-xl pl-9 pr-3 py-2.5 text-xs text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-red-500"
                   />
                 </div>
 
@@ -862,12 +811,16 @@ export default function AdminDashboardClient({ currentUser }: AdminDashboardClie
 
             {/* Podium (Top 3) */}
             {hasPodium && (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
+              <div className="podium-stage grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
                 {/* 2nd Place */}
                 {top2 && (
                   <div
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`View second place: ${top2.name}`}
+                    onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); openUserDetail(top2.userId, top2); } }}
                     onClick={() => openUserDetail(top2.userId, top2)}
-                    className="p-5 rounded-2xl bg-slate-900/80 border border-slate-700/60 glass-card-hover cursor-pointer flex flex-col justify-between group shadow-md order-2 md:order-1"
+                    className="podium-card p-5 cursor-pointer flex flex-col justify-between group order-2 md:order-1"
                   >
                     <div className="flex items-start justify-between">
                       <div className="flex items-center gap-2">
@@ -906,11 +859,15 @@ export default function AdminDashboardClient({ currentUser }: AdminDashboardClie
                 {/* 1st Place (Gold Champion) */}
                 {top1 && (
                   <div
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`View first place: ${top1.name}`}
+                    onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); triggerPodiumConfetti(); openUserDetail(top1.userId, top1); } }}
                     onClick={() => {
                       triggerPodiumConfetti();
                       openUserDetail(top1.userId, top1);
                     }}
-                    className="p-6 rounded-2xl bg-gradient-to-b from-amber-950/30 via-slate-900 to-slate-900 border border-amber-500/40 glass-card-hover cursor-pointer flex flex-col justify-between group shadow-xl relative order-1 md:order-2"
+                    className="podium-card podium-gold p-6 cursor-pointer flex flex-col justify-between group order-1 md:order-2"
                   >
                     <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full bg-amber-500 text-slate-950 text-[10px] font-black tracking-wider uppercase shadow-md flex items-center gap-1">
                       <Trophy className="w-3 h-3" /> Champion
@@ -952,8 +909,12 @@ export default function AdminDashboardClient({ currentUser }: AdminDashboardClie
                 {/* 3rd Place */}
                 {top3 && (
                   <div
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`View third place: ${top3.name}`}
+                    onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); openUserDetail(top3.userId, top3); } }}
                     onClick={() => openUserDetail(top3.userId, top3)}
-                    className="p-5 rounded-2xl bg-slate-900/80 border border-amber-900/40 hover:border-amber-700/60 transition-all cursor-pointer flex flex-col justify-between group shadow-md order-3"
+                    className="podium-card podium-bronze p-5 cursor-pointer flex flex-col justify-between group order-3"
                   >
                     <div className="flex items-start justify-between">
                       <div className="flex items-center gap-2">
@@ -991,9 +952,17 @@ export default function AdminDashboardClient({ currentUser }: AdminDashboardClie
               </div>
             )}
 
-            {/* Leaderboard Table (Ranks 4+ or all) */}
+            {/* Complete rankings, including podium participants */}
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h3 className="text-sm font-semibold text-white">All participants <span className="ml-2 text-slate-400 font-normal">{filteredLeaderboard.length}</span></h3>
+              <div className="flex items-center gap-4 text-[11px] text-slate-400">
+                <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-rose-400" /> Score / 100</span>
+                <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-teal-300" /> Goal consistency</span>
+              </div>
+            </div>
             <div className="overflow-x-auto rounded-2xl border border-slate-800">
-              <table className="w-full text-left border-collapse text-xs">
+              <table className="ranking-table w-full text-left border-collapse text-xs">
+                <caption className="sr-only">Employee rankings for {startDate} through {endDate}</caption>
                 <thead>
                   <tr className="bg-slate-900/90 text-slate-400 border-b border-slate-800">
                     <th className="px-4 py-3 font-bold uppercase tracking-wider w-14">Rank</th>
@@ -1006,6 +975,9 @@ export default function AdminDashboardClient({ currentUser }: AdminDashboardClie
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/60">
+                  {tableDisplayList.length === 0 && (
+                    <tr><td colSpan={7} className="p-10 text-center text-slate-400">No participants found. Try another name or email.</td></tr>
+                  )}
                   {tableDisplayList.map((user: any) => (
                     <tr
                       key={user.userId}
@@ -1030,6 +1002,7 @@ export default function AdminDashboardClient({ currentUser }: AdminDashboardClie
                         <span className="font-black text-sm text-red-400">
                           {Number(user.finalScore || 0).toFixed(1)}
                         </span>
+                        <progress className="score-meter" max={100} value={Number(user.finalScore || 0)} aria-label={`${user.name} final score`} />
                       </td>
                       <td className="px-4 py-3.5">
                         <p className="font-semibold text-slate-200">
@@ -1046,6 +1019,7 @@ export default function AdminDashboardClient({ currentUser }: AdminDashboardClie
                         <p className="text-[10px] text-slate-400">
                           {Number(user.consistencyScore || 0).toFixed(1)} / 30 pts
                         </p>
+                        <progress className="score-meter score-meter-teal" max={100} value={Number(user.goalCompletionRate ?? user.consistencyRate ?? 0)} aria-label={`${user.name} goal consistency`} />
                       </td>
                       <td className="px-4 py-3.5">
                         {user.totalExcessSteps > 0 ? (
@@ -1070,6 +1044,54 @@ export default function AdminDashboardClient({ currentUser }: AdminDashboardClie
                   ))}
                 </tbody>
               </table>
+            </div>
+          </div>
+
+          {/* Daily trends support the rankings above. */}
+          <div className="p-6 rounded-3xl card-premium card-accent-teal animate-fadeInUp delay-5">
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+              <div>
+                <h2 className="text-base font-bold text-white tracking-tight">Daily Step Trends</h2>
+                <p className="text-xs text-slate-400">Total collective steps logged across the company per day</p>
+              </div>
+              <span className="text-xs px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-800 text-slate-300 font-mono">
+                {timeSeries.length} Days Recorded
+              </span>
+            </div>
+            <div className="h-64 w-full">
+              {isMounted ? (
+                <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={timeSeries} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#29364b" vertical={false} />
+                  <XAxis dataKey="dateFormatted" stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} />
+                  <YAxis stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false}
+                    tickFormatter={(v) => (v >= 1000 ? `${(v / 1000).toFixed(0)}k` : `${v}`)} />
+                  <Tooltip
+                    cursor={{ fill: "rgba(94, 234, 212, 0.06)" }}
+                    content={({ active, payload, label }) => {
+                      if (active && payload && payload.length) {
+                        return (
+                          <div className="p-3 rounded-xl bg-slate-900/95 border border-slate-700 shadow-xl text-xs text-slate-200">
+                            <p className="font-bold text-white mb-1">{label}</p>
+                            <p className="text-teal-300 font-medium">Total Steps: {Number(payload[0].value).toLocaleString("en-US")}</p>
+                          </div>
+                        );
+                      }
+                      return null;
+                    }}
+                  />
+                  <defs>
+                    <linearGradient id="adminSteps" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#5eead4" />
+                      <stop offset="100%" stopColor="#0d9488" />
+                    </linearGradient>
+                  </defs>
+                  <Bar dataKey="steps" fill="url(#adminSteps)" radius={[6, 6, 0, 0]} maxBarSize={40} />
+                </BarChart>
+              </ResponsiveContainer>
+              ) : (
+                <div className="h-full w-full flex items-center justify-center text-slate-500 text-xs">Loading chart...</div>
+              )}
             </div>
           </div>
         </div>

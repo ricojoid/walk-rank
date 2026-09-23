@@ -44,12 +44,12 @@ export default function Navbar({ user }: NavbarProps) {
   return (
     <>
       <header className="sticky top-0 z-40 w-full bg-[#0B0F17]/85 backdrop-blur-xl navbar-glow">
-      <div className="w-full px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
         {/* Brand Logo */}
         <div className="flex items-center gap-6">
           <Link href={isSuperAdmin ? "/admin" : "/dashboard"} className="flex items-center gap-2.5 group">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-red-600 via-red-500 to-rose-500 flex items-center justify-center shadow-lg shadow-red-500/25 group-hover:shadow-red-500/40 group-hover:scale-105 transition-all">
-              <Footprints className="w-5 h-5 text-white font-bold" />
+            <div className="w-12 h-10 rounded-xl bg-white p-1.5 flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform">
+              <img src="/fujitsu.png" alt="Fujitsu" width={48} height={27} className="w-full h-full object-contain" />
             </div>
             <div>
               <div className="flex items-center gap-1.5">
@@ -59,7 +59,7 @@ export default function Navbar({ user }: NavbarProps) {
                 <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
               </div>
               <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wider">
-                Step Tracker
+                 FID Wellness
               </p>
             </div>
           </Link>
@@ -77,18 +77,7 @@ export default function Navbar({ user }: NavbarProps) {
                   }`}
                 >
                   <ShieldCheck className="w-4 h-4 text-red-400" />
-                  Admin Analytics
-                </Link>
-                <Link
-                  href="/dashboard"
-                  className={`px-3.5 py-1.5 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${
-                    pathname === "/dashboard"
-                      ? "bg-red-500/15 text-red-400 border border-red-500/30 font-semibold"
-                      : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
-                  }`}
-                >
-                  <LayoutDashboard className="w-4 h-4 text-slate-400" />
-                  User Dashboard View
+                  Admin Dashboard
                 </Link>
               </>
             ) : (

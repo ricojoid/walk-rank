@@ -5,7 +5,6 @@ import "./globals.css";
 const inter = Inter({
   subsets: ["latin"],
   display: "swap",
-  variable: "--font-inter",
 });
 
 export const metadata: Metadata = {
@@ -13,11 +12,10 @@ export const metadata: Metadata = {
   description: "Aplikasi pelacak jumlah langkah harian dengan analitik untuk User dan Super Admin.",
   icons: {
     icon: [
-      { url: "/icon.png?v=2", type: "image/png" },
-      { url: "/favicon.ico?v=2", sizes: "any" },
+      { url: "/fujitsu.png", type: "image/png" },
     ],
-    shortcut: "/icon.png?v=2",
-    apple: "/icon.png?v=2",
+    shortcut: "/fujitsu.png",
+    apple: "/fujitsu.png",
   },
 };
 
@@ -27,8 +25,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="id" className={`dark ${inter.variable}`}>
-      <body className={`${inter.className} bg-[#0B0F17] text-slate-100 antialiased min-h-screen selection:bg-red-500 selection:text-white`}>
+    <html lang="id" className="dark" suppressHydrationWarning>
+      <body
+        className={`${inter.className} bg-[#0B0F17] text-slate-100 antialiased min-h-screen`}
+        suppressHydrationWarning
+      >
         {children}
       </body>
     </html>

@@ -74,7 +74,7 @@ export default function LoginPage() {
   };
 
   return (
-    <main className="min-h-screen flex flex-col justify-center items-center p-4 sm:p-6 lg:p-8 bg-[#0B0F17] relative overflow-hidden selection:bg-red-600 selection:text-white">
+    <main className="app-shell min-h-screen flex flex-col justify-center items-center p-4 sm:p-6 lg:p-8 relative overflow-hidden selection:bg-red-600 selection:text-white">
       {/* 1. Dynamic Animated Ambient Background Orbs */}
       <div className="absolute -top-24 -left-24 w-96 h-96 bg-red-600/20 rounded-full blur-[130px] pointer-events-none animate-orb-1" />
       <div className="absolute top-1/2 -right-32 w-[28rem] h-[28rem] bg-rose-600/15 rounded-full blur-[140px] pointer-events-none animate-orb-2" />
@@ -143,8 +143,8 @@ export default function LoginPage() {
       <div className="w-full max-w-md relative z-10">
         {/* Brand Header */}
         <div className="text-center mb-6">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-tr from-red-600 via-red-500 to-rose-500 p-3 shadow-xl shadow-red-600/30 mb-3 border border-red-400/30 group hover:scale-105 transition-transform animate-ring-pulse">
-            <Footprints className="w-7 h-7 text-white font-black" />
+          <div className="inline-flex items-center justify-center w-20 h-14 rounded-2xl bg-white p-2 shadow-xl mb-4 hover:scale-105 transition-transform">
+            <img src="/fujitsu.png" alt="Fujitsu" width={64} height={36} className="w-full h-full object-contain" />
           </div>
           <h1 className="text-2xl sm:text-3xl font-black tracking-tight gradient-text">
             Walk<span className="text-red-500">Rank</span>
