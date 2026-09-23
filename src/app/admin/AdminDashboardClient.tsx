@@ -22,6 +22,7 @@ import {
   Filter,
   RefreshCw,
   KeyRound,
+  Clapperboard,
 } from "lucide-react";
 import confetti from "canvas-confetti";
 import {
@@ -37,6 +38,7 @@ import UserDetailModal from "@/components/UserDetailModal";
 import CreateUserModal from "@/components/CreateUserModal";
 import DeleteUserConfirmModal from "@/components/DeleteUserConfirmModal";
 import ResetPasswordModal from "@/components/ResetPasswordModal";
+import CinematicLeaderboard from "@/components/CinematicLeaderboard";
 import SpecificDatePickerModal from "@/components/SpecificDatePickerModal";
 import DeleteLogConfirmModal from "@/components/DeleteLogConfirmModal";
 import EvidenceViewerModal from "@/components/EvidenceViewerModal";
@@ -92,6 +94,7 @@ export default function AdminDashboardClient({ currentUser }: AdminDashboardClie
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [isLeaderboardMaximized, setIsLeaderboardMaximized] = useState(false);
+  const [isCinematicOpen, setIsCinematicOpen] = useState(false);
 
   // Admin Logs Management Tab State
   const [adminLogs, setAdminLogs] = useState<any[]>([]);
@@ -771,7 +774,7 @@ export default function AdminDashboardClient({ currentUser }: AdminDashboardClie
               </div>
 
               {/* Search and Maximize / Minimize Button */}
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-3">
                 <div className="relative flex-1 sm:w-64">
                   <Search className="w-4 h-4 text-slate-500 absolute left-3 top-2.5" />
                   <input
@@ -784,6 +787,10 @@ export default function AdminDashboardClient({ currentUser }: AdminDashboardClie
                   />
                 </div>
 
+                <button type="button" onClick={() => setIsCinematicOpen(true)} disabled={loading || !rawLeaderboard.length}
+                  className="btn-primary inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold text-white disabled:opacity-40 disabled:cursor-not-allowed">
+                  <Clapperboard className="h-4 w-4" /> Cinematic Reveal
+                </button>
                 <button
                   type="button"
                   onClick={() => setIsLeaderboardMaximized(!isLeaderboardMaximized)}
@@ -1636,6 +1643,11 @@ export default function AdminDashboardClient({ currentUser }: AdminDashboardClie
       {/* ========================================================= */}
 
       {/* 1. Create User Modal */}
+      {isCinematicOpen && (
+        <CinematicLeaderboard participants={rawLeaderboard}
+          period={analyticsData.dateRange.isSpecificDates ? `Selected dates: ${analyticsData.dateRange.selectedDates.join(" · ")}` : `${analyticsData.dateRange.startDate} — ${analyticsData.dateRange.endDate}`}
+          onClose={() => setIsCinematicOpen(false)} />
+      )}
       <CreateUserModal
         isOpen={isCreateUserOpen}
         onClose={() => setIsCreateUserOpen(false)}
