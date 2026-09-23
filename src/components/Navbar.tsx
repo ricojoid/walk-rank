@@ -2,11 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
 import {
-  Footprints,
-  LayoutDashboard,
-  ShieldCheck,
   LogOut,
   UserCog,
 } from "lucide-react";
@@ -26,8 +22,6 @@ interface NavbarProps {
 }
 
 export default function Navbar({ user }: NavbarProps) {
-  const pathname = usePathname();
-  const router = useRouter();
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
   const handleLogout = async () => {
@@ -64,38 +58,7 @@ export default function Navbar({ user }: NavbarProps) {
             </div>
           </Link>
 
-          {/* Navigation Links */}
-          <nav className="hidden md:flex items-center gap-1">
-            {isSuperAdmin ? (
-              <>
-                <Link
-                  href="/admin"
-                  className={`px-3.5 py-1.5 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${
-                    pathname === "/admin"
-                      ? "bg-red-500/15 text-red-400 border border-red-500/30 font-semibold"
-                      : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
-                  }`}
-                >
-                  <ShieldCheck className="w-4 h-4 text-red-400" />
-                  Admin Dashboard
-                </Link>
-              </>
-            ) : (
-              <>
-                <Link
-                  href="/dashboard"
-                  className={`px-3.5 py-1.5 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${
-                    pathname === "/dashboard"
-                      ? "bg-red-500/15 text-red-400 border border-red-500/30 font-semibold"
-                      : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
-                  }`}
-                >
-                  <LayoutDashboard className="w-4 h-4 text-red-400" />
-                  My Dashboard
-                </Link>
-              </>
-            )}
-          </nav>
+
         </div>
 
         {/* Right Action Area */}
@@ -129,18 +92,9 @@ export default function Navbar({ user }: NavbarProps) {
 
               <div className="hidden sm:block text-left">
                 <div className="flex items-center gap-1.5">
-                  <p className="text-xs font-bold text-slate-100 max-w-[120px] truncate group-hover:text-red-400 transition-colors">
+                  <p className="text-xs font-bold text-slate-100 max-w-[140px] truncate group-hover:text-red-400 transition-colors">
                     {user.name}
                   </p>
-                  <span
-                    className={`text-[9px] px-1.5 py-0.2 rounded font-semibold ${
-                      isSuperAdmin
-                        ? "bg-red-500/20 text-red-300 border border-red-500/30"
-                        : "bg-slate-800 text-slate-300 border border-slate-700"
-                    }`}
-                  >
-                    {isSuperAdmin ? "SUPER ADMIN" : "USER"}
-                  </span>
                 </div>
                 <p className="text-[10px] text-slate-400 truncate max-w-[140px] font-mono">
                   {user.username ? `@${user.username}` : user.email}

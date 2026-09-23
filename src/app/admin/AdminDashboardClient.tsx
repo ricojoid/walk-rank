@@ -405,44 +405,6 @@ export default function AdminDashboardClient({ currentUser }: AdminDashboardClie
 
   return (
     <div className="space-y-6 w-full">
-      {/* 1. Executive Top Header with Ambient Glow */}
-      <div className="dashboard-hero flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 sm:p-8 rounded-3xl card-premium relative overflow-hidden group animate-fadeInUp bg-noise">
-        {/* Subtle Ambient Decorative Glows */}
-        <div className="absolute -top-16 -right-16 w-80 h-80 bg-red-600/12 rounded-full blur-[100px] pointer-events-none animate-orb-1" />
-        <div className="absolute -bottom-16 -left-16 w-72 h-72 bg-rose-600/10 rounded-full blur-[100px] pointer-events-none animate-orb-2" />
-        <div className="absolute top-1/2 left-1/3 w-96 h-96 bg-amber-500/5 rounded-full blur-[120px] pointer-events-none" />
-
-        <div className="space-y-1.5 z-10">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-red-500/15 text-red-400 border border-red-500/30 flex items-center gap-1.5 uppercase tracking-wider">
-              <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-ping" />
-              <ShieldCheck className="w-3.5 h-3.5 text-red-500" />
-              FID Super Admin
-            </span>
-            <span className="text-xs text-slate-400 font-medium">
-              • {usersList.length || kpi.range.totalUsers} Registered Employees
-            </span>
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-black tracking-tight gradient-text">
-            Every step. A stronger team.
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-400 max-w-2xl">
-            Your team’s activity, progress, and standout walkers — all in one place.
-          </p>
-        </div>
-
-        {/* Action Button: Add User */}
-        <div className="flex flex-wrap items-center gap-3 z-10 shrink-0">
-          <button
-            onClick={() => setIsCreateUserOpen(true)}
-            className="w-full sm:w-auto px-4 py-2.5 text-xs sm:text-sm font-bold rounded-xl text-white transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-95 btn-primary"
-          >
-            <UserPlus className="w-4 h-4" />
-            <span>Add New Employee</span>
-          </button>
-        </div>
-      </div>
-
       {/* 2. Admin Navigation Tabs */}
       <div className="flex flex-wrap items-center gap-2 border-b border-slate-800 pb-3">
         <button
