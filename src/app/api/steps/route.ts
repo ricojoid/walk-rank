@@ -185,10 +185,16 @@ export async function POST(req: Request) {
     }
 
     // Parse date into pure Date (UTC YYYY-MM-DD)
-    const rawDate = new Date(date);
-    const cleanDate = new Date(
-      Date.UTC(rawDate.getFullYear(), rawDate.getMonth(), rawDate.getDate())
-    );
+    let cleanDate: Date;
+    if (typeof date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(date.trim())) {
+      const [y, m, d] = date.trim().split("-").map(Number);
+      cleanDate = new Date(Date.UTC(y, m - 1, d));
+    } else {
+      const rawDate = new Date(date);
+      cleanDate = new Date(
+        Date.UTC(rawDate.getFullYear(), rawDate.getMonth(), rawDate.getDate())
+      );
+    }
 
     const steps = Math.max(0, parseInt(stepCount, 10) || 0);
     const distanceKm = Number((steps * 0.00076).toFixed(2));

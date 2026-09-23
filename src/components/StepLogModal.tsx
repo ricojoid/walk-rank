@@ -27,6 +27,11 @@ interface StepLogModalProps {
   dailyGoal?: number;
 }
 
+const getLocalTodayDate = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+};
+
 export default function StepLogModal({
   isOpen,
   onClose,
@@ -38,7 +43,7 @@ export default function StepLogModal({
   dailyGoal = 8000,
 }: StepLogModalProps) {
   const [date, setDate] = useState(
-    initialDate || new Date().toISOString().split("T")[0]
+    initialDate || getLocalTodayDate()
   );
   const [stepCount, setStepCount] = useState<number>(initialSteps);
   const [note, setNote] = useState(initialNote);
@@ -49,7 +54,7 @@ export default function StepLogModal({
 
   useEffect(() => {
     if (isOpen) {
-      setDate(initialDate || new Date().toISOString().split("T")[0]);
+      setDate(initialDate || getLocalTodayDate());
       setStepCount(initialSteps || 0);
       setNote(initialNote || "");
       setEvidenceUrl(initialEvidenceUrl || null);
@@ -182,7 +187,7 @@ export default function StepLogModal({
               <input
                 type="date"
                 value={date}
-                max={new Date().toISOString().split("T")[0]}
+                max={getLocalTodayDate()}
                 onChange={(e) => setDate(e.target.value)}
                 required
                 className="w-full bg-slate-900/90 border border-slate-700/80 rounded-xl px-3.5 py-2.5 text-sm text-slate-100 focus:outline-none focus:ring-1 focus:ring-red-500"

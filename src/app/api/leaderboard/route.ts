@@ -49,15 +49,18 @@ export async function GET(req: Request) {
 
     if (!isSpecificDates) {
       if (startDateParam && endDateParam) {
-        const s = new Date(startDateParam);
-        const e = new Date(endDateParam);
-        startDate = new Date(Date.UTC(s.getFullYear(), s.getMonth(), s.getDate()));
-        endDate = new Date(Date.UTC(e.getFullYear(), e.getMonth(), e.getDate()));
+        const [sy, sm, sd] = startDateParam.split("-").map(Number);
+        startDate = new Date(Date.UTC(sy, sm - 1, sd));
+        const [ey, em, ed] = endDateParam.split("-").map(Number);
+        endDate = new Date(Date.UTC(ey, em - 1, ed));
       } else if (period === "7d") {
         startDate = new Date(todayDateOnly.getTime() - 6 * 86400000);
         endDate = todayDateOnly;
       } else if (period === "30d") {
         startDate = new Date(todayDateOnly.getTime() - 29 * 86400000);
+        endDate = todayDateOnly;
+      } else if (period === "month") {
+        startDate = new Date(Date.UTC(todayDateOnly.getUTCFullYear(), todayDateOnly.getUTCMonth(), 1));
         endDate = todayDateOnly;
       } else {
         startDate = todayDateOnly;
@@ -135,9 +138,8 @@ export async function GET(req: Request) {
         stat.daysLogged += 1;
         stat.highestDaySteps = Math.max(stat.highestDaySteps, log.stepCount);
 
-        // Daily goal: 8000 steps = 1 score point
-        const goalThreshold = stat.user.dailyGoal || 8000;
-        if (log.stepCount >= goalThreshold) {
+        // Bobot 30% konsistensi: target minimal 8000 steps per hari
+        if (log.stepCount >= 8000) {
           stat.score += 1;
           stat.goalsMetCount += 1;
         }

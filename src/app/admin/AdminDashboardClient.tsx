@@ -54,12 +54,21 @@ interface AdminDashboardClientProps {
 }
 
 export default function AdminDashboardClient({ currentUser }: AdminDashboardClientProps) {
-  const todayStr = new Date().toISOString().split("T")[0];
-  const last7DaysStr = new Date(Date.now() - 6 * 86400000).toISOString().split("T")[0];
-  const last30DaysStr = new Date(Date.now() - 29 * 86400000).toISOString().split("T")[0];
-  const thisMonthStartStr = new Date(new Date().getFullYear(), new Date().getMonth(), 1)
-    .toISOString()
-    .split("T")[0];
+  const formatLocalDate = (d: Date) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  };
+
+  const now = new Date();
+  const todayStr = formatLocalDate(now);
+  const last7DaysStr = formatLocalDate(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6));
+  const last30DaysStr = formatLocalDate(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 29));
+  const thisMonthStartStr = formatLocalDate(new Date(now.getFullYear(), now.getMonth(), 1));
+
+
+
 
   const [isMounted, setIsMounted] = useState(false);
 
