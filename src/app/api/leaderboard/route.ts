@@ -96,6 +96,14 @@ export async function GET(req: Request) {
               lte: endDate,
             },
           },
+      select: {
+        id: true,
+        userId: true,
+        date: true,
+        stepCount: true,
+        distanceKm: true,
+        calories: true,
+      },
     });
 
     const userStatsMap = new Map<

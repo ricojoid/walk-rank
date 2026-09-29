@@ -205,59 +205,6 @@ export default function AdminDashboardClient({ currentUser }: AdminDashboardClie
     fetchUsersList();
   }, []);
 
-  // Smart Background Polling (15s interval + focus detection + visibility API)
-  useEffect(() => {
-    let intervalId: NodeJS.Timeout | null = null;
-
-    const startPolling = () => {
-      if (intervalId) clearInterval(intervalId);
-      intervalId = setInterval(() => {
-        if (!document.hidden) {
-          if (activeTab === "analytics") {
-            fetchAnalytics(startDate, endDate, true);
-          } else if (activeTab === "logs") {
-            fetchAdminLogs(logsPage, true);
-          }
-        }
-      }, 15000);
-    };
-
-    const handleVisibilityChange = () => {
-      if (!document.hidden) {
-        // Immediately fetch fresh data on tab return
-        if (activeTab === "analytics") {
-          fetchAnalytics(startDate, endDate, true);
-        } else if (activeTab === "logs") {
-          fetchAdminLogs(logsPage, true);
-        }
-        startPolling();
-      } else if (intervalId) {
-        // Pause polling when tab is hidden to conserve server resources
-        clearInterval(intervalId);
-      }
-    };
-
-    const handleFocus = () => {
-      if (!document.hidden) {
-        if (activeTab === "analytics") {
-          fetchAnalytics(startDate, endDate, true);
-        } else if (activeTab === "logs") {
-          fetchAdminLogs(logsPage, true);
-        }
-      }
-    };
-
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-    window.addEventListener("focus", handleFocus);
-    startPolling();
-
-    return () => {
-      if (intervalId) clearInterval(intervalId);
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-      window.removeEventListener("focus", handleFocus);
-    };
-  }, [startDate, endDate, selectedDates, activeTab, logsPage, logsSearchTerm]);
-
   const handleQuickRoleChange = async (userId: string, newRole: "USER" | "SUPER_ADMIN") => {
     try {
       const res = await fetch("/api/admin/users", {
@@ -581,19 +528,23 @@ export default function AdminDashboardClient({ currentUser }: AdminDashboardClie
                 )}
               </div>
 
-              {/* Live Polling Status Badge & Refresh Button */}
+              {/* Manual Refresh Button */}
               <div className="flex items-center gap-1.5 pl-2 border-l border-slate-800">
-                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  Live Sync (15s)
-                </span>
                 <button
                   type="button"
-                  onClick={() => fetchAnalytics(startDate, endDate)}
+                  onClick={() => {
+                    if (activeTab === "analytics") {
+                      fetchAnalytics(startDate, endDate);
+                    } else if (activeTab === "logs") {
+                      fetchAdminLogs(logsPage);
+                    } else if (activeTab === "users") {
+                      fetchUsersList();
+                    }
+                  }}
                   className="p-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white border border-slate-800 transition-colors cursor-pointer"
-                  title="Force Refresh Data Now"
+                  title="Refresh Data"
                 >
-                  <RefreshCw className={`w-3.5 h-3.5 ${loading || logsLoading ? "animate-spin text-red-400" : ""}`} />
+                  <RefreshCw className={`w-3.5 h-3.5 ${loading || logsLoading || usersLoading ? "animate-spin text-red-400" : ""}`} />
                 </button>
               </div>
             </div>

@@ -71,14 +71,22 @@ export async function GET(req: Request) {
       );
     }
 
-    // 1. Fetch Today & Yesterday Total Steps for KPI cards
+    // 1. Fetch Today & Yesterday Total Steps for KPI cards (select only needed columns to avoid huge Base64 evidenceUrl payloads)
     const todayLogs = await prisma.stepLog.findMany({
       where: { date: todayDateOnly },
-      include: { user: { select: { id: true, name: true, avatarUrl: true, department: true } } },
+      select: {
+        id: true,
+        stepCount: true,
+        userId: true,
+        user: { select: { id: true, name: true, avatarUrl: true, department: true } },
+      },
     });
 
     const yesterdayLogs = await prisma.stepLog.findMany({
       where: { date: yesterdayDateOnly },
+      select: {
+        stepCount: true,
+      },
     });
 
     const totalStepsToday = todayLogs.reduce((acc, l) => acc + l.stepCount, 0);
@@ -96,7 +104,7 @@ export async function GET(req: Request) {
       where: { role: "USER" },
     });
 
-    // 2. Fetch all logs in the selected Date Range or Specific Dates
+    // 2. Fetch all logs in the selected Date Range or Specific Dates (select only required lightweight metrics)
     const rangeLogs = await prisma.stepLog.findMany({
       where: isSpecificDates
         ? {
@@ -110,18 +118,13 @@ export async function GET(req: Request) {
               lte: endDate!,
             },
           },
-      include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            role: true,
-            department: true,
-            dailyGoal: true,
-            avatarUrl: true,
-          },
-        },
+      select: {
+        id: true,
+        userId: true,
+        date: true,
+        stepCount: true,
+        distanceKm: true,
+        calories: true,
       },
       orderBy: { date: "asc" },
     });

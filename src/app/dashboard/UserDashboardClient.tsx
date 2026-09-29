@@ -104,47 +104,6 @@ export default function UserDashboardClient({ initialUser }: UserDashboardClient
     fetchDashboardData();
   }, []);
 
-  // Smart Background Polling (15s interval + focus detection + visibility API)
-  useEffect(() => {
-    let intervalId: NodeJS.Timeout | null = null;
-
-    const startPolling = () => {
-      if (intervalId) clearInterval(intervalId);
-      intervalId = setInterval(() => {
-        if (!document.hidden) {
-          fetchDashboardData(true);
-        }
-      }, 15000);
-    };
-
-    const handleVisibilityChange = () => {
-      if (!document.hidden) {
-        // Immediately fetch fresh rankings on tab focus
-        fetchDashboardData(true);
-        startPolling();
-      } else if (intervalId) {
-        // Pause polling when tab is hidden to conserve resources
-        clearInterval(intervalId);
-      }
-    };
-
-    const handleFocus = () => {
-      if (!document.hidden) {
-        fetchDashboardData(true);
-      }
-    };
-
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-    window.addEventListener("focus", handleFocus);
-    startPolling();
-
-    return () => {
-      if (intervalId) clearInterval(intervalId);
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-      window.removeEventListener("focus", handleFocus);
-    };
-  }, []);
-
   const handleQuickFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -815,10 +774,6 @@ export default function UserDashboardClient({ initialUser }: UserDashboardClient
                   <Award className="w-4 h-4 text-amber-400" />
                   Today's Leaderboard
                 </h3>
-                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  Live (15s)
-                </span>
               </div>
               <div className="flex items-center gap-1.5">
                 <button

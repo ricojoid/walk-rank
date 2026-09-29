@@ -57,47 +57,6 @@ export default function MaximizedLeaderboardModal({
     }
   }, [isOpen, period]);
 
-  // Smart Background Polling (15s interval + focus detection + visibility API)
-  useEffect(() => {
-    if (!isOpen) return;
-
-    let intervalId: NodeJS.Timeout | null = null;
-
-    const startPolling = () => {
-      if (intervalId) clearInterval(intervalId);
-      intervalId = setInterval(() => {
-        if (!document.hidden) {
-          fetchLeaderboardData(period, true);
-        }
-      }, 15000);
-    };
-
-    const handleVisibilityChange = () => {
-      if (!document.hidden) {
-        fetchLeaderboardData(period, true);
-        startPolling();
-      } else if (intervalId) {
-        clearInterval(intervalId);
-      }
-    };
-
-    const handleFocus = () => {
-      if (!document.hidden) {
-        fetchLeaderboardData(period, true);
-      }
-    };
-
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-    window.addEventListener("focus", handleFocus);
-    startPolling();
-
-    return () => {
-      if (intervalId) clearInterval(intervalId);
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-      window.removeEventListener("focus", handleFocus);
-    };
-  }, [isOpen, period]);
-
   // Handle ESC key to close
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -149,14 +108,8 @@ export default function MaximizedLeaderboardModal({
           </div>
         </div>
 
-        {/* Right Controls: Live Badge, Period Selector & Minimize Button */}
+        {/* Right Controls: Period Selector & Minimize Button */}
         <div className="flex flex-wrap items-center gap-2.5">
-          {/* Live Sync Status Badge */}
-          <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            Live (15s)
-          </span>
-
           {/* Period selector */}
           <div className="flex items-center gap-1 p-1 rounded-xl bg-slate-900 border border-slate-800">
             <button

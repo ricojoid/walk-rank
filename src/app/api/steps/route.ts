@@ -85,6 +85,12 @@ export async function GET(req: Request) {
 
     const allUserLogs = await prisma.stepLog.findMany({
       where: { userId: targetUserId },
+      select: {
+        date: true,
+        stepCount: true,
+        distanceKm: true,
+        calories: true,
+      },
       orderBy: { date: "desc" },
     });
 
@@ -123,7 +129,9 @@ export async function GET(req: Request) {
     // Mini daily leaderboard for motivation
     const todayCommunityLogs = await prisma.stepLog.findMany({
       where: { date: todayDateOnly },
-      include: {
+      select: {
+        id: true,
+        stepCount: true,
         user: {
           select: { id: true, name: true, avatarUrl: true, department: true, dailyGoal: true },
         },

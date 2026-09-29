@@ -26,6 +26,8 @@ yarn-error.log*
 # Local env files (preserve secrets)
 .env
 .env*.local
+.env.production
+.env.example
 
 # Agents configuration & IDE
 .agents
