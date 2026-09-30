@@ -31,3 +31,6 @@ yarn-error.log*
 
 # Agents configuration & IDE
 .agents
+
+# Local OCR sample screenshots (personal data)
+/learnAsset/

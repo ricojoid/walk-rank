@@ -36,6 +36,7 @@ import {
   ReferenceLine,
 } from "recharts";
 import StepLogModal from "@/components/StepLogModal";
+import { useEvidenceScan, EvidenceScanStatus } from "@/components/EvidenceScan";
 import MaximizedLeaderboardModal from "@/components/MaximizedLeaderboardModal";
 import ProfileEditModal from "@/components/ProfileEditModal";
 import EvidenceViewerModal from "@/components/EvidenceViewerModal";
@@ -100,6 +101,7 @@ export default function UserDashboardClient({ initialUser }: UserDashboardClient
   const [deleteLoading, setDeleteLoading] = useState<string | null>(null);
   const [isLeaderboardMaximized, setIsLeaderboardMaximized] = useState(false);
   const quickFileInputRef = useRef<HTMLInputElement>(null);
+  const quickEvidenceScan = useEvidenceScan(setTodayInputSteps);
 
   const fetchDashboardData = async (isSilent = false) => {
     try {
@@ -140,9 +142,11 @@ export default function UserDashboardClient({ initialUser }: UserDashboardClient
       if (typeof reader.result === "string") {
         setTodayEvidenceUrl(reader.result);
         setQuickSaveError("");
+        quickEvidenceScan.scan(reader.result);
       }
     };
     reader.readAsDataURL(file);
+    e.target.value = ""; // let the same file be picked again after removing it
   };
 
   const handleQuickSaveToday = async (e: React.FormEvent) => {
@@ -491,7 +495,10 @@ export default function UserDashboardClient({ initialUser }: UserDashboardClient
                       </button>
                       <button
                         type="button"
-                        onClick={() => setTodayEvidenceUrl(null)}
+                        onClick={() => {
+                          setTodayEvidenceUrl(null);
+                          quickEvidenceScan.reset();
+                        }}
                         className="p-1 text-slate-400 hover:text-rose-400 rounded-lg hover:bg-rose-950/20 transition-colors cursor-pointer"
                         title="Remove Photo"
                       >
@@ -512,6 +519,13 @@ export default function UserDashboardClient({ initialUser }: UserDashboardClient
                     <span className="text-[10px] text-slate-500">Supports JPG, PNG, WEBP (Max 5MB)</span>
                   </button>
                 )}
+
+                <EvidenceScanStatus
+                  status={quickEvidenceScan.status}
+                  detected={quickEvidenceScan.detected}
+                  stepCount={todayInputSteps}
+                  onUse={setTodayInputSteps}
+                />
               </div>
 
               {/* Note input */}

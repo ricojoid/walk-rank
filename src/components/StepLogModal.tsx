@@ -15,6 +15,7 @@ import {
   Trash2,
 } from "lucide-react";
 import confetti from "canvas-confetti";
+import { useEvidenceScan, EvidenceScanStatus } from "@/components/EvidenceScan";
 
 interface StepLogModalProps {
   isOpen: boolean;
@@ -51,6 +52,7 @@ export default function StepLogModal({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const evidenceScan = useEvidenceScan(setStepCount);
 
   useEffect(() => {
     if (isOpen) {
@@ -59,6 +61,7 @@ export default function StepLogModal({
       setNote(initialNote || "");
       setEvidenceUrl(initialEvidenceUrl || null);
       setError("");
+      evidenceScan.reset();
     }
   }, [isOpen, initialDate, initialSteps, initialNote, initialEvidenceUrl]);
 
@@ -86,9 +89,11 @@ export default function StepLogModal({
       if (typeof reader.result === "string") {
         setEvidenceUrl(reader.result);
         setError("");
+        evidenceScan.scan(reader.result);
       }
     };
     reader.readAsDataURL(file);
+    e.target.value = ""; // let the same file be picked again after removing it
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -316,7 +321,10 @@ export default function StepLogModal({
                   </button>
                   <button
                     type="button"
-                    onClick={() => setEvidenceUrl(null)}
+                    onClick={() => {
+                      setEvidenceUrl(null);
+                      evidenceScan.reset();
+                    }}
                     className="p-1 text-slate-400 hover:text-rose-400 rounded-lg hover:bg-rose-950/20 transition-colors cursor-pointer"
                     title="Remove Photo"
                   >
@@ -337,6 +345,13 @@ export default function StepLogModal({
                 <span className="text-[10px] text-slate-500">Supports JPG, PNG, WEBP (Max 5MB)</span>
               </button>
             )}
+
+            <EvidenceScanStatus
+              status={evidenceScan.status}
+              detected={evidenceScan.detected}
+              stepCount={stepCount}
+              onUse={setStepCount}
+            />
           </div>
 
           {/* Activity Note */}
