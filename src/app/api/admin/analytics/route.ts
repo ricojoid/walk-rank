@@ -71,23 +71,66 @@ export async function GET(req: Request) {
       );
     }
 
-    // 1. Fetch Today & Yesterday Total Steps for KPI cards (select only needed columns to avoid huge Base64 evidenceUrl payloads)
-    const todayLogs = await prisma.stepLog.findMany({
-      where: { date: todayDateOnly },
-      select: {
-        id: true,
-        stepCount: true,
-        userId: true,
-        user: { select: { id: true, name: true, avatarUrl: true, department: true } },
-      },
-    });
-
-    const yesterdayLogs = await prisma.stepLog.findMany({
-      where: { date: yesterdayDateOnly },
-      select: {
-        stepCount: true,
-      },
-    });
+    // All queries are independent of each other, so run them in parallel
+    const [todayLogs, yesterdayLogs, totalUsersCount, rangeLogs, allUsers] = await Promise.all([
+      // 1. Today & Yesterday logs for KPI cards (select only needed columns to avoid huge Base64 evidenceUrl payloads)
+      prisma.stepLog.findMany({
+        where: { date: todayDateOnly },
+        select: {
+          id: true,
+          stepCount: true,
+          userId: true,
+          user: { select: { id: true, name: true, avatarUrl: true, department: true } },
+        },
+      }),
+      prisma.stepLog.findMany({
+        where: { date: yesterdayDateOnly },
+        select: { stepCount: true },
+      }),
+      // Total registered users (SUPER_ADMIN excluded — they are observers, not participants)
+      prisma.user.count({
+        where: { role: "USER" },
+      }),
+      // 2. All logs in the selected Date Range or Specific Dates
+      prisma.stepLog.findMany({
+        where: isSpecificDates
+          ? {
+              date: {
+                in: selectedDateObjs,
+              },
+            }
+          : {
+              date: {
+                gte: startDate!,
+                lte: endDate!,
+              },
+            },
+        // Only aggregate fields: evidenceUrl and user.avatarUrl are base64 images and
+        // would be loaded for every log in the range, then thrown away.
+        select: {
+          id: true,
+          userId: true,
+          date: true,
+          stepCount: true,
+          distanceKm: true,
+          calories: true,
+        },
+        orderBy: { date: "asc" },
+      }),
+      // Users for the leaderboard — only USER role, SUPER_ADMIN are admins, not participants
+      prisma.user.findMany({
+        where: { role: "USER" },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+          department: true,
+          dailyGoal: true,
+          avatarUrl: true,
+        },
+      }),
+    ]);
 
     const totalStepsToday = todayLogs.reduce((acc, l) => acc + l.stepCount, 0);
     const activeUsersToday = todayLogs.length;
@@ -99,36 +142,6 @@ export async function GET(req: Request) {
       ? [...todayLogs].sort((a, b) => b.stepCount - a.stepCount)[0]
       : null;
 
-    // Total registered users (SUPER_ADMIN excluded — they are observers, not participants)
-    const totalUsersCount = await prisma.user.count({
-      where: { role: "USER" },
-    });
-
-    // 2. Fetch all logs in the selected Date Range or Specific Dates (select only required lightweight metrics)
-    const rangeLogs = await prisma.stepLog.findMany({
-      where: isSpecificDates
-        ? {
-            date: {
-              in: selectedDateObjs,
-            },
-          }
-        : {
-            date: {
-              gte: startDate!,
-              lte: endDate!,
-            },
-          },
-      select: {
-        id: true,
-        userId: true,
-        date: true,
-        stepCount: true,
-        distanceKm: true,
-        calories: true,
-      },
-      orderBy: { date: "asc" },
-    });
-
     const totalStepsRange = rangeLogs.reduce((acc, l) => acc + l.stepCount, 0);
     const totalDistanceRange = Number((totalStepsRange * 0.00076).toFixed(2));
     const totalCaloriesRange = Math.round(totalStepsRange * 0.042);
@@ -136,7 +149,7 @@ export async function GET(req: Request) {
     // 3. Build Daily Time Series for charts
     const dailyMap = new Map<
       string,
-      { date: string; displayDate: string; totalSteps: number; activeUsers: number; logs: any[] }
+      { date: string; displayDate: string; totalSteps: number; activeUsers: number }
     >();
 
     if (isSpecificDates) {
@@ -151,7 +164,6 @@ export async function GET(req: Request) {
           displayDate,
           totalSteps: 0,
           activeUsers: 0,
-          logs: [],
         });
       }
     } else {
@@ -168,7 +180,6 @@ export async function GET(req: Request) {
           displayDate,
           totalSteps: 0,
           activeUsers: 0,
-          logs: [],
         });
       }
     }
@@ -179,7 +190,6 @@ export async function GET(req: Request) {
         const entry = dailyMap.get(key)!;
         entry.totalSteps += log.stepCount;
         entry.activeUsers += 1;
-        entry.logs.push(log);
       }
     }
 
@@ -195,20 +205,6 @@ export async function GET(req: Request) {
     }));
 
     // 4. Build User Leaderboard for selected Date Range
-    // Only include USER role in leaderboard — SUPER_ADMIN are admins, not participants
-    const allUsers = await prisma.user.findMany({
-      where: { role: "USER" },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        role: true,
-        department: true,
-        dailyGoal: true,
-        avatarUrl: true,
-      },
-    });
-
     const userStatsMap = new Map<
       string,
       {

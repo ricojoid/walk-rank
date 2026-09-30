@@ -72,39 +72,40 @@ export async function GET(req: Request) {
       );
     }
 
-    const allUsers = await prisma.user.findMany({
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        department: true,
-        dailyGoal: true,
-        avatarUrl: true,
-      },
-    });
-
-    const logs = await prisma.stepLog.findMany({
-      where: isSpecificDates
-        ? {
-            date: {
-              in: selectedDateObjs,
+    const [allUsers, logs] = await Promise.all([
+      prisma.user.findMany({
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          department: true,
+          dailyGoal: true,
+          avatarUrl: true,
+        },
+      }),
+      prisma.stepLog.findMany({
+        where: isSpecificDates
+          ? {
+              date: {
+                in: selectedDateObjs,
+              },
+            }
+          : {
+              date: {
+                gte: startDate,
+                lte: endDate,
+              },
             },
-          }
-        : {
-            date: {
-              gte: startDate,
-              lte: endDate,
-            },
-          },
-      select: {
-        id: true,
-        userId: true,
-        date: true,
-        stepCount: true,
-        distanceKm: true,
-        calories: true,
-      },
-    });
+        select: {
+          id: true,
+          userId: true,
+          date: true,
+          stepCount: true,
+          distanceKm: true,
+          calories: true,
+        },
+      }),
+    ]);
 
     const userStatsMap = new Map<
       string,
