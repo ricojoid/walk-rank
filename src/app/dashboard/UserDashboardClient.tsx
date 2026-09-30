@@ -42,6 +42,28 @@ import EvidenceViewerModal from "@/components/EvidenceViewerModal";
 import confetti from "canvas-confetti";
 import { Maximize2 } from "lucide-react";
 
+function DashboardSkeleton() {
+  return (
+    <div className="space-y-6">
+      <div className="h-32 rounded-3xl skeleton-shimmer" />
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 h-72 rounded-3xl skeleton-shimmer" />
+        <div className="h-72 rounded-3xl skeleton-shimmer" />
+      </div>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {[0, 1, 2, 3].map((i) => (
+          <div key={i} className="h-24 rounded-2xl skeleton-shimmer" style={{ animationDelay: `${i * 0.08}s` }} />
+        ))}
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 h-80 rounded-3xl skeleton-shimmer" />
+        <div className="h-80 rounded-3xl skeleton-shimmer" />
+      </div>
+      <div className="h-48 rounded-3xl skeleton-shimmer" />
+    </div>
+  );
+}
+
 interface UserDashboardClientProps {
   initialUser: {
     id: string;
@@ -193,14 +215,7 @@ export default function UserDashboardClient({ initialUser }: UserDashboardClient
     setIsModalOpen(true);
   };
 
-  if (loading && !data) {
-    return (
-      <div className="py-20 flex flex-col items-center justify-center text-slate-400 gap-3">
-        <div className="w-10 h-10 border-4 border-emerald-500/20 border-t-emerald-500 rounded-full animate-spin" />
-        <p className="text-sm font-medium">Memuat Dashboard Langkah...</p>
-      </div>
-    );
-  }
+
 
   const todayLog = data?.today || { stepCount: 0 };
   const stats = {
@@ -249,6 +264,8 @@ export default function UserDashboardClient({ initialUser }: UserDashboardClient
   }
 
   return (
+    <>
+    {loading && !data ? <DashboardSkeleton /> : (
     <div className="space-y-6">
       {/* Top Banner & Greeting with Ambient Glow */}
       <div className="dashboard-hero flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 sm:p-8 rounded-3xl card-premium relative overflow-hidden shadow-xl group animate-fadeInUp bg-noise">
@@ -1040,5 +1057,7 @@ export default function UserDashboardClient({ initialUser }: UserDashboardClient
         {...selectedEvidence}
       />
     </div>
+    )}
+    </>
   );
 }

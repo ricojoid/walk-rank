@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
+import { attachEvidenceLinks, resolveEvidenceInput } from "@/lib/evidence";
 
 export async function GET(req: Request) {
   try {
@@ -20,11 +21,11 @@ export async function GET(req: Request) {
     const targetUserId =
       user.role === "SUPER_ADMIN" && userIdParam ? userIdParam : user.id;
 
-    // Retrieve target user profile
-    const targetUser =
+    // Resolve target user profile without blocking subsequent queries
+    const targetUserPromise: Promise<any> =
       targetUserId === user.id
-        ? user
-        : await prisma.user.findUnique({
+        ? Promise.resolve(user)
+        : prisma.user.findUnique({
             where: { id: targetUserId },
             select: {
               id: true,
@@ -66,57 +67,71 @@ export async function GET(req: Request) {
       whereClause.date = dateFilter;
     }
 
-    const logs = await prisma.stepLog.findMany({
-      where: whereClause,
-      orderBy: { date: "desc" },
-      take: limitParam ? parseInt(limitParam, 10) : 60,
-    });
-
-    // Compute stats
     const today = new Date();
     const todayDateOnly = new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()));
 
-    const todayLog = await prisma.stepLog.findFirst({
-      where: {
-        userId: targetUserId,
-        date: todayDateOnly,
-      },
-    });
+    // Run all DB queries in parallel — avoids sequential round-trips
+    const [targetUser, logs, todayLog, statsAgg, datesForStreak, todayCommunityLogs] = await Promise.all([
+      targetUserPromise,
+      // Evidence photos are Base64 blobs — omit them and send links instead (see attachEvidenceLinks)
+      prisma.stepLog.findMany({
+        where: whereClause,
+        omit: { evidenceUrl: true },
+        orderBy: { date: "desc" },
+        take: limitParam ? parseInt(limitParam, 10) : 60,
+      }),
+      prisma.stepLog.findFirst({
+        where: { userId: targetUserId, date: todayDateOnly },
+        omit: { evidenceUrl: true },
+      }),
+      // Aggregate avoids loading all rows just to compute sums
+      prisma.stepLog.aggregate({
+        where: { userId: targetUserId },
+        _sum: { stepCount: true, distanceKm: true, calories: true },
+        _count: { id: true },
+        _max: { stepCount: true },
+      }),
+      // Only fetch dates for streak — minimal data transfer
+      prisma.stepLog.findMany({
+        where: { userId: targetUserId },
+        select: { date: true },
+        orderBy: { date: "desc" },
+      }),
+      prisma.stepLog.findMany({
+        where: { date: todayDateOnly },
+        select: {
+          id: true,
+          stepCount: true,
+          user: {
+            select: { id: true, name: true, avatarUrl: true, department: true, dailyGoal: true },
+          },
+        },
+        orderBy: { stepCount: "desc" },
+        take: 5,
+      }),
+    ]);
 
-    const allUserLogs = await prisma.stepLog.findMany({
-      where: { userId: targetUserId },
-      select: {
-        date: true,
-        stepCount: true,
-        distanceKm: true,
-        calories: true,
-      },
-      orderBy: { date: "desc" },
-    });
+    const [logsWithEvidence, [todayWithEvidence]] = await Promise.all([
+      attachEvidenceLinks(logs),
+      attachEvidenceLinks(todayLog ? [todayLog] : []),
+    ]);
 
-    const totalSteps = allUserLogs.reduce((acc, l) => acc + l.stepCount, 0);
-    const totalDistance = allUserLogs.reduce((acc, l) => acc + l.distanceKm, 0);
-    const totalCalories = allUserLogs.reduce((acc, l) => acc + l.calories, 0);
-    const logDaysCount = allUserLogs.length;
+    const totalSteps = statsAgg._sum.stepCount ?? 0;
+    const totalDistance = statsAgg._sum.distanceKm ?? 0;
+    const totalCalories = statsAgg._sum.calories ?? 0;
+    const logDaysCount = statsAgg._count.id;
     const avgSteps = logDaysCount > 0 ? Math.round(totalSteps / logDaysCount) : 0;
-    const maxSteps = allUserLogs.reduce((max, l) => Math.max(max, l.stepCount), 0);
+    const maxSteps = statsAgg._max.stepCount ?? 0;
 
-    // Calculate streak (consecutive days with logged steps >= 1)
+    // Streak: datesForStreak is already sorted desc by DB — no JS sort needed
     let streak = 0;
-    const sortedDesc = [...allUserLogs].sort(
-      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-    );
+    if (datesForStreak.length > 0) {
+      const firstLogDateStr = new Date(datesForStreak[0].date).toISOString().split("T")[0];
+      const isTodayLogged = firstLogDateStr === todayDateOnly.toISOString().split("T")[0];
+      let curr = isTodayLogged ? new Date(todayDateOnly) : new Date(todayDateOnly.getTime() - 86400000);
 
-    if (sortedDesc.length > 0) {
-      let expectedDate = new Date(todayDateOnly);
-      // check if today is logged, if not check from yesterday
-      const firstLogDate = new Date(sortedDesc[0].date);
-      const isTodayLogged = firstLogDate.getTime() === expectedDate.getTime();
-      
-      let curr = isTodayLogged ? expectedDate : new Date(todayDateOnly.getTime() - 86400000);
-      
-      for (const log of sortedDesc) {
-        const logD = new Date(log.date);
+      for (const entry of datesForStreak) {
+        const logD = new Date(entry.date);
         if (logD.toISOString().split("T")[0] === curr.toISOString().split("T")[0]) {
           streak++;
           curr = new Date(curr.getTime() - 86400000);
@@ -126,24 +141,10 @@ export async function GET(req: Request) {
       }
     }
 
-    // Mini daily leaderboard for motivation
-    const todayCommunityLogs = await prisma.stepLog.findMany({
-      where: { date: todayDateOnly },
-      select: {
-        id: true,
-        stepCount: true,
-        user: {
-          select: { id: true, name: true, avatarUrl: true, department: true, dailyGoal: true },
-        },
-      },
-      orderBy: { stepCount: "desc" },
-      take: 5,
-    });
-
     return NextResponse.json({
       user: targetUser,
-      logs,
-      today: todayLog || {
+      logs: logsWithEvidence,
+      today: todayWithEvidence || {
         date: todayDateOnly,
         stepCount: 0,
         distanceKm: 0,
@@ -183,7 +184,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { date, stepCount, note, evidenceUrl } = await req.json();
+    const { date, stepCount, note, evidenceUrl: evidenceInput } = await req.json();
+    const evidenceUrl = await resolveEvidenceInput(evidenceInput, user);
 
     if (!date || stepCount === undefined || stepCount < 0) {
       return NextResponse.json(
@@ -209,7 +211,7 @@ export async function POST(req: Request) {
     const calories = Math.round(steps * 0.042);
 
     // Enforce mandatory photo evidence when recording steps
-    if (steps > 0 && (!evidenceUrl || typeof evidenceUrl !== "string" || evidenceUrl.trim().length === 0)) {
+    if (steps > 0 && !evidenceUrl) {
       return NextResponse.json(
         { error: "Photo evidence is required! Please attach a photo/screenshot of your step tracker or pedometer." },
         { status: 400 }
@@ -227,7 +229,7 @@ export async function POST(req: Request) {
         stepCount: steps,
         distanceKm,
         calories,
-        evidenceUrl: evidenceUrl ? evidenceUrl.trim() : null,
+        evidenceUrl,
         note: note ? note.trim() : null,
       },
       create: {
@@ -236,12 +238,14 @@ export async function POST(req: Request) {
         stepCount: steps,
         distanceKm,
         calories,
-        evidenceUrl: evidenceUrl ? evidenceUrl.trim() : null,
+        evidenceUrl,
         note: note ? note.trim() : null,
       },
+      omit: { evidenceUrl: true },
     });
 
-    return NextResponse.json({ success: true, log: stepLog });
+    const [log] = await attachEvidenceLinks([stepLog]);
+    return NextResponse.json({ success: true, log });
   } catch (error) {
     console.error("Error saving step log:", error);
     return NextResponse.json({ error: "Failed to save step log." }, { status: 500 });

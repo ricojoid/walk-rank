@@ -43,6 +43,36 @@ import SpecificDatePickerModal from "@/components/SpecificDatePickerModal";
 import DeleteLogConfirmModal from "@/components/DeleteLogConfirmModal";
 import EvidenceViewerModal from "@/components/EvidenceViewerModal";
 
+function AdminSkeleton() {
+  return (
+    <div className="space-y-6 w-full">
+      <div className="flex flex-wrap gap-2 pb-3 border-b border-slate-800">
+        {[0, 1, 2].map((i) => (
+          <div key={i} className="h-10 w-44 rounded-xl skeleton-shimmer" />
+        ))}
+      </div>
+      <div className="h-16 rounded-2xl skeleton-shimmer" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {[0, 1, 2, 3].map((i) => (
+          <div key={i} className="h-28 rounded-2xl skeleton-shimmer" />
+        ))}
+      </div>
+      <div className="h-[420px] rounded-3xl skeleton-shimmer" />
+      <div className="h-72 rounded-3xl skeleton-shimmer" />
+    </div>
+  );
+}
+
+function TableRowsSkeleton({ rows = 6 }: { rows?: number }) {
+  return (
+    <div className="p-4 space-y-3">
+      {Array.from({ length: rows }, (_, i) => (
+        <div key={i} className="h-12 rounded-xl skeleton-shimmer" />
+      ))}
+    </div>
+  );
+}
+
 interface AdminDashboardClientProps {
   currentUser: {
     id: string;
@@ -296,12 +326,7 @@ export default function AdminDashboardClient({ currentUser }: AdminDashboardClie
   };
 
   if (loading && !analyticsData) {
-    return (
-      <div className="py-24 flex flex-col items-center justify-center text-slate-400 gap-3">
-        <div className="w-8 h-8 border-2 border-red-500/20 border-t-red-500 rounded-full animate-spin" />
-        <p className="text-sm font-medium">Loading analytics dashboard...</p>
-      </div>
-    );
+    return <AdminSkeleton />;
   }
 
   const kpi = analyticsData?.kpi || {
@@ -1150,7 +1175,13 @@ export default function AdminDashboardClient({ currentUser }: AdminDashboardClie
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/60">
-                  {filteredUsersList.length === 0 ? (
+                  {usersLoading && usersList.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="p-0">
+                        <TableRowsSkeleton />
+                      </td>
+                    </tr>
+                  ) : filteredUsersList.length === 0 ? (
                     <tr>
                       <td colSpan={6} className="px-4 py-8 text-center text-slate-500">
                         No employees found matching &quot;{userSearchTerm}&quot;
@@ -1366,10 +1397,7 @@ export default function AdminDashboardClient({ currentUser }: AdminDashboardClie
           {/* Table Card */}
           <div className="rounded-3xl bg-[#121826] border border-slate-800 overflow-hidden shadow-2xl">
             {logsLoading && adminLogs.length === 0 ? (
-              <div className="py-24 flex flex-col items-center justify-center text-slate-400 gap-3">
-                <div className="w-8 h-8 border-2 border-red-500/20 border-t-red-500 rounded-full animate-spin" />
-                <p className="text-xs font-medium">Loading activity logs...</p>
-              </div>
+              <TableRowsSkeleton />
             ) : adminLogs.length === 0 ? (
               <div className="py-20 text-center text-slate-500 text-xs">
                 No activity logs found matching the search/filter criteria.

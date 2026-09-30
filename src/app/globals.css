@@ -682,6 +682,112 @@ body:has(.cinema-dialog[open]) { overflow: hidden; }
 @keyframes cinema-reveal { from { opacity: 0; transform: translateY(20px) scale(0.96); } to { opacity: 1; transform: none; } }
 @keyframes cinema-sweep { from { transform: rotate(-18deg); } to { transform: rotate(18deg); } }
 
+/* ═══════════════════════════════════════════════════
+   SPLASH SCREEN
+   ═══════════════════════════════════════════════════ */
+.splash-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: #080e19;
+  transform: translateY(0);
+  transition: transform 600ms cubic-bezier(0.76, 0, 0.24, 1);
+}
+.splash-exit {
+  transform: translateY(-100%);
+  pointer-events: none;
+}
+
+@keyframes splash-bar {
+  from { width: 0%; }
+  to { width: 100%; }
+}
+.animate-splash-bar {
+  animation: splash-bar 1.65s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* Footstep stamp — scale down like pressing foot, then ghost out */
+@keyframes footstep-stamp {
+  0%   { opacity: 0;    transform: scale(1.4) translateY(-6px); }
+  25%  { opacity: 1;    transform: scale(0.95) translateY(0);   }
+  55%  { opacity: 0.75; transform: scale(1)    translateY(0);   }
+  100% { opacity: 0.25; transform: scale(1)    translateY(0);   }
+}
+
+.splash-footstep {
+  opacity: 0;
+  transform-origin: center bottom;
+  animation: footstep-stamp 1.1s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+/* ═══════════════════════════════════════════════════
+   WALKING FOOTPRINTS BACKGROUND
+   ═══════════════════════════════════════════════════ */
+/* Sits behind page content: .app-shell is `isolate`, so z-index -1 stays above its background */
+.walking-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+}
+.walking-bg-trail {
+  position: absolute;
+  width: 0;
+  height: 0;
+  transform-origin: 0 0;
+}
+.walking-bg-step {
+  position: absolute;
+  opacity: 0;
+  transform: translate(-50%, -50%);
+  animation-name: bg-footstep;
+  animation-timing-function: ease-out;
+  animation-iteration-count: infinite;
+  animation-fill-mode: both;
+}
+/* Percentages of the full lap: quick press, linger ~2s, fade out */
+@keyframes bg-footstep {
+  0%   { opacity: 0;    transform: translate(-50%, -50%) scale(1.25); }
+  2%   { opacity: 0.28; transform: translate(-50%, -50%) scale(1); }
+  12%  { opacity: 0.2;  transform: translate(-50%, -50%) scale(1); }
+  30%  { opacity: 0;    transform: translate(-50%, -50%) scale(1); }
+  100% { opacity: 0;    transform: translate(-50%, -50%) scale(1); }
+}
+
+/* ═══════════════════════════════════════════════════
+   SKELETON LOADING
+   ═══════════════════════════════════════════════════ */
+@keyframes skeleton-sweep {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(200%); }
+}
+
+.skeleton-shimmer {
+  position: relative;
+  overflow: hidden;
+  background: rgba(30, 41, 59, 0.5);
+}
+
+.skeleton-shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.04) 40%,
+    rgba(255, 255, 255, 0.07) 50%,
+    rgba(255, 255, 255, 0.04) 60%,
+    transparent 100%
+  );
+  animation: skeleton-sweep 1.6s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;

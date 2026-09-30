@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
+import { attachEvidenceLinks } from "@/lib/evidence";
 
 export async function GET(req: Request) {
   try {
@@ -78,6 +79,7 @@ export async function GET(req: Request) {
       prisma.stepLog.count({ where }),
       prisma.stepLog.findMany({
         where,
+        omit: { evidenceUrl: true },
         include: {
           user: {
             select: {
@@ -98,7 +100,7 @@ export async function GET(req: Request) {
     ]);
 
     return NextResponse.json({
-      logs,
+      logs: await attachEvidenceLinks(logs),
       totalCount,
       page,
       limit,

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { queueSplash } from "@/components/SplashScreen";
 import {
   Footprints,
   User,
@@ -65,6 +66,7 @@ export default function LoginPage() {
       }
 
       const targetUrl = data.user.role === "SUPER_ADMIN" ? "/admin" : "/dashboard";
+      queueSplash();
       window.location.href = targetUrl;
     } catch (err: any) {
       setError(err.message || "An unexpected error occurred.");
