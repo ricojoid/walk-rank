@@ -23,6 +23,7 @@ import {
   RefreshCw,
   KeyRound,
   Clapperboard,
+  FileSpreadsheet,
 } from "lucide-react";
 import confetti from "canvas-confetti";
 import {
@@ -144,6 +145,7 @@ export default function AdminDashboardClient({ currentUser }: AdminDashboardClie
   const [logsTotalCount, setLogsTotalCount] = useState(0);
   const [selectedLogEvidence, setSelectedLogEvidence] = useState<any | null>(null);
   const [deleteTargetLog, setDeleteTargetLog] = useState<any | null>(null);
+  const [logsExporting, setLogsExporting] = useState(false);
 
   // Keyboard shortcut to close maximized view
   useEffect(() => {
@@ -227,6 +229,41 @@ export default function AdminDashboardClient({ currentUser }: AdminDashboardClie
       console.error("Failed to fetch admin logs:", err);
     } finally {
       if (!isSilent) setLogsLoading(false);
+    }
+  };
+
+  const handleExportLogs = async () => {
+    setLogsExporting(true);
+    try {
+      const params = new URLSearchParams();
+      if (logsSearchTerm) params.set("search", logsSearchTerm);
+      if (selectedDates.length > 0) {
+        params.set("dates", selectedDates.join(","));
+      } else if (startDate && endDate) {
+        params.set("startDate", startDate);
+        params.set("endDate", endDate);
+      }
+      const res = await fetch(`/api/admin/logs/export?${params.toString()}`);
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.error || "Failed to export activity logs.");
+      }
+      const blob = await res.blob();
+      const disposition = res.headers.get("Content-Disposition") || "";
+      const filename = disposition.match(/filename="([^"]+)"/)?.[1] || "Walk_Rank_Activity_Logs.xlsx";
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (err: any) {
+      console.error("Failed to export admin logs:", err);
+      alert(err.message || "Failed to export activity logs.");
+    } finally {
+      setLogsExporting(false);
     }
   };
 
@@ -1339,6 +1376,20 @@ export default function AdminDashboardClient({ currentUser }: AdminDashboardClie
                 <span className="text-xs font-semibold px-3 py-1 rounded-xl bg-slate-900 border border-slate-800 text-slate-300">
                   Total: <strong className="text-white">{logsTotalCount}</strong> entries
                 </span>
+                <button
+                  type="button"
+                  onClick={handleExportLogs}
+                  disabled={logsExporting || logsTotalCount === 0}
+                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-500/60 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Download activity logs for the selected dates as Excel"
+                >
+                  {logsExporting ? (
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <FileSpreadsheet className="w-4 h-4" />
+                  )}
+                  <span>{logsExporting ? "Exporting..." : "Download Excel"}</span>
+                </button>
                 <button
                   type="button"
                   onClick={() => fetchAdminLogs(logsPage)}

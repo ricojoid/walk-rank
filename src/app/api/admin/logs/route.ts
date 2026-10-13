@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { attachEvidenceLinks } from "@/lib/evidence";
+import { buildAdminLogsWhere } from "@/lib/logFilters";
 
 export async function GET(req: Request) {
   try {
@@ -18,62 +19,10 @@ export async function GET(req: Request) {
     }
 
     const { searchParams } = new URL(req.url);
-    const search = searchParams.get("search")?.trim() || "";
-    const startDateParam = searchParams.get("startDate");
-    const endDateParam = searchParams.get("endDate");
-    const datesParam = searchParams.get("dates");
-    const userIdParam = searchParams.get("userId");
     const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10));
     const limit = Math.min(200, Math.max(10, parseInt(searchParams.get("limit") || "50", 10)));
 
-    const where: any = {};
-
-    // Date filters
-    if (datesParam && datesParam.trim().length > 0) {
-      const selectedDateStrings = Array.from(
-        new Set(
-          datesParam
-            .split(",")
-            .map((s) => s.trim())
-            .filter((s) => /^\d{4}-\d{2}-\d{2}$/.test(s))
-        )
-      );
-
-      if (selectedDateStrings.length > 0) {
-        const selectedDateObjs = selectedDateStrings.map((dStr) => {
-          const [y, m, d] = dStr.split("-").map(Number);
-          return new Date(Date.UTC(y, m - 1, d));
-        });
-        where.date = { in: selectedDateObjs };
-      }
-    } else if (startDateParam || endDateParam) {
-      const dateFilter: any = {};
-      if (startDateParam) {
-        const s = new Date(startDateParam);
-        dateFilter.gte = new Date(Date.UTC(s.getFullYear(), s.getMonth(), s.getDate()));
-      }
-      if (endDateParam) {
-        const e = new Date(endDateParam);
-        dateFilter.lte = new Date(Date.UTC(e.getFullYear(), e.getMonth(), e.getDate()));
-      }
-      where.date = dateFilter;
-    }
-
-    // User filter
-    if (userIdParam) {
-      where.userId = userIdParam;
-    }
-
-    // Search filter across user name or email
-    if (search) {
-      where.user = {
-        OR: [
-          { name: { contains: search, mode: "insensitive" } },
-          { email: { contains: search, mode: "insensitive" } },
-          { department: { contains: search, mode: "insensitive" } },
-        ],
-      };
-    }
+    const where = buildAdminLogsWhere(searchParams);
 
     const [totalCount, logs] = await Promise.all([
       prisma.stepLog.count({ where }),
